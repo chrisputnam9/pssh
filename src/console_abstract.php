@@ -16,15 +16,14 @@ class Console_Abstract
      * Stuff
      */
     protected $dt = null;
-    protected $stamp = '';
+    protected $run_stamp = '';
 
     /**
      * Constructor - set up basics
      */
     public function __construct()
     {
-        $this->dt = new DateTime();
-        $this->stamp = $this->dt->format('Y-m-d_H.i.s');
+        $this->run_stamp = $this->stamp();
     }
 
     /**
@@ -145,7 +144,7 @@ class Console_Abstract
         }
 
 		if ($this->stamp_lines)
-			echo date('Y-m-d H:i:s ... ');
+			echo $this->stamp() . ' ... ';
 
 		echo $data . ($line_ending ? "\n" : "");
     }
@@ -180,6 +179,14 @@ class Console_Abstract
         }
         $line = fgets($this->getCliInputHandle());
         return $line;
+    }
+
+    /**
+     * Get timestamp
+     */
+    public function stamp()
+    {
+        return date('Y-m-d_H.i.s');
     }
 
     /**

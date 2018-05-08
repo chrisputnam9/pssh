@@ -1,0 +1,8 @@
+#!/usr/bin/php
+<?php
+
+require_once 'src/console_abstract.php';
+require_once 'src/pssh_config.php';
+require_once 'src/pssh.php';
+
+# vim: syntax=php

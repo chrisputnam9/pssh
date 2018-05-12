@@ -1,5 +1,10 @@
 <?php
 /**
+ * Constants
+ */
+define('DS', DIRECTORY_SEPARATOR);
+
+/**
  * Console Abstract
  * Reusable abstract for creating PHP shell utilities
  */
@@ -11,6 +16,12 @@ class Console_Abstract
 	public $verbose = false;
 	public $stamp_lines = false;
 	public $step = false;
+
+    /**
+     * Config paths
+     */
+    protected $config_dir = null;
+    protected $config_file = null;
 
     /**
      * Stuff
@@ -47,7 +58,7 @@ class Console_Abstract
                 $instance->error("Invalid method - $method");
             }
 
-            $args = array();
+            $args = [];
             foreach ($argv as $_arg)
             {
                 if (strpos($_arg, '--') === 0)
@@ -116,7 +127,7 @@ class Console_Abstract
 	public function warning($data)
 	{
 		$this->output('WARNING: ', false);
-		$this->output($data);
+		$this->output($data, true, false);
 	}
 
     /**
@@ -132,7 +143,7 @@ class Console_Abstract
     /**
      * Output data
      */
-    public function output($data, $line_ending=true)
+    public function output($data, $line_ending=true, $stamp_lines=null)
     {
         if (is_object($data) or is_array($data))
         {
@@ -143,10 +154,19 @@ class Console_Abstract
             $data = $data ? "(Bool) True" : "(Bool) False";
         }
 
-		if ($this->stamp_lines)
+        $stamp_lines = is_null($stamp_lines) ? $this->stamp_lines : $stamp_lines;
+		if ($stamp_lines)
 			echo $this->stamp() . ' ... ';
 
 		echo $data . ($line_ending ? "\n" : "");
+    }
+
+    /**
+     * Output horizonal line - divider
+     */
+    public function hr()
+    {
+        $this->output("==================================================");
     }
 
     /**
@@ -154,9 +174,9 @@ class Console_Abstract
      */
     public function pause($message="[ ENTER TO STEP | 'FINISH' TO CONTINUE ]")
     {
-        $this->log("----------------------------------------");
-
         if (!$this->step) return;
+
+        $this->hr();
 
         $this->log($message);
 
@@ -169,16 +189,53 @@ class Console_Abstract
     }
 
     /**
-     * Get input from CLI
+     * Get selection from list - from CLI
+     * @param $list of items to pick from
+     * @param $message to show - prompt
+     * @param $default index 
      */
-    public function input($message=false)
+    public function select($list, $message=false,$default=0)
+    {
+        $list = array_values($list);
+        foreach ($list as $i => $item)
+        {
+            $this->output("$i. $item");
+        }
+
+        $max = count($list)-1;
+        $s=-1;
+        $first = true;
+        while ($s < 0 or $s > $max)
+        {
+            if (!$first)
+            {
+                $this->warn("Invalid selection $s");
+            }
+            $s = (int) $this->input($message, $default);
+            $first = false;
+        }
+
+        return $list[$s];
+    }
+
+    /**
+     * Get input from CLI
+     * @param $message to show - prompt
+     */
+    public function input($message=false, $default=null)
     {
         if ($message)
         {
+            if (!is_null($default))
+            {
+                $message.= " ($default)";
+            }
+            $message.= ": ";
             $this->output($message, false);
         }
         $line = fgets($this->getCliInputHandle());
-        return $line;
+        $line = trim($line);
+        return empty($line) ? $default : $line;
     }
 
     /**
@@ -190,23 +247,41 @@ class Console_Abstract
     }
 
     /**
+     * Get Config Dir
+     */
+    public function getConfigDir()
+    {
+        if (is_null($this->config_dir))
+        {
+            $this->config_dir = $_SERVER['HOME'] . DS . '.' . static::CONFIG_DIR;
+        }
+
+        return $this->config_dir;
+    }
+
+    /**
+     * Get Config File
+     */
+    public function getConfigFile()
+    {
+        if (is_null($this->config_file))
+        {
+            $config_dir = $this->getConfigDir();
+            $this->config_file = $config_dir . DS . 'config.json';
+        }
+
+        return $this->config_file;
+    }
+
+    /**
      * Init/Load Config File
      */
     public function initConfig()
     {
-        $config_dir = $_SERVER['HOME'] . '/.' . static::CONFIG_DIR;
-        $this->config_dir = $config_dir;
+        $this->log("Console_Abstract::initConfig");
 
-        $this->log("initConfig");
-
-        // Config defaults
-        $this->json_config_paths = array(
-            $config_dir . '/ssh_config_work.json',
-            $config_dir . '/ssh_config_personal.json',
-        );
-        $this->json_import_path = $config_dir . '/ssh_config_imported.json';
-        $this->ssh_config_path = $_SERVER['HOME'] . '/.ssh/config';
-        $this->backup_dir = $config_dir . '/backups';
+        $config_dir = $this->getConfigDir();
+        $config_file = $this->getConfigFile();
 
         try
         {
@@ -216,10 +291,10 @@ class Console_Abstract
                 mkdir($config_dir, 0755);
             }
 
-            if (is_file($config_dir . '/config.json'))
+            if (is_file($config_file))
             {
-                $this->log("Loading config file - $config_dir/config.json");
-                $json = file_get_contents($config_dir . '/config.json');
+                $this->log("Loading config file - $config_file");
+                $json = file_get_contents($config_file);
                 $config = json_decode($json, true);
                 foreach ($config as $key => $value)
                 {
@@ -228,8 +303,8 @@ class Console_Abstract
             }
             else
             {
-                $this->log("Creating default config file - $config_dir/config.json");
-                $config = array();
+                $this->log("Creating default config file - $config_file");
+                $config = [];
                 foreach ($this->getPublicProperties() as $property)
                 {
                     $config[$property] = $this->$property;
@@ -239,7 +314,7 @@ class Console_Abstract
             // Rewrite config - pretty print
             ksort($config);
             $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            file_put_contents($config_dir . '/config.json', $json);
+            file_put_contents($config_file, $json);
         }
         catch (Exception $e)
         {
@@ -249,12 +324,58 @@ class Console_Abstract
     }
 
     /**
+     * Prepare shell argument for use
+     * @param $value to prep
+     * @param $default to return if $value is empty
+     * @param $force_array (?) - whether to split and/or wrap to force it to be an array.
+     * Note: defaults to false, or true if $default is an array
+     * @param $trim (true) - whether to trim whitespace from value(s)
+     */
+    public function prepArg($value, $default, $force_array=null, $trim=true)
+    {
+        if (is_null($force_array))
+        {
+            $force_array = is_array($default);
+        }
+
+        // Default?
+        if (empty($value))
+        {
+            $value = $default;
+        }
+
+        // Change to array if needed
+        if (is_string($value) and $force_array)
+        {
+            $value = explode(",", $value);
+        }
+
+        // Trim
+        if (is_string($value))
+        {
+            $value = trim($value);
+        }
+        else if (is_array($value))
+        {
+            $value = array_map('trim', $value);
+        }
+
+        return $value;
+    }
+
+    /**
      * Configure property - if public
      */
     public function configure($key, $value)
     {
         $this->log("Configuring - $key:");
         $this->log($value);
+
+        if (substr($key, 0, 3) == 'no-' and $value === true)
+        {
+            $key = substr($key, 3);
+            $value = false;
+        }
 
         $public_properties = $this->getPublicProperties();
         if (in_array($key, $public_properties))
@@ -273,7 +394,7 @@ class Console_Abstract
     {
         if (is_null($this->_public_properties))
         {
-            $this->_public_properties = array();
+            $this->_public_properties = [];
             $reflection = new ReflectionObject($this);
             foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop)
             {
@@ -304,4 +425,17 @@ class Console_Abstract
         }
     }
 }
+
+/**
+ * todo
+ * - Automatic install method
+ * - Automatic version check and update
+ * - no-input flag for scripting
+ * - Dynamic help method based on comments
+ * - Automatic config file documentation
+ * - Pull Console Abstract to it's own repository
+ * - Generic config sync from pssh
+ * - Generic config backup from pssh
+ */
+
 ?>

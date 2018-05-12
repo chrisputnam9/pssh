@@ -428,10 +428,11 @@ class Console_Abstract
 
 /**
  * todo
+ * - Basic help - method list
  * - Automatic install method
  * - Automatic version check and update
  * - no-input flag for scripting
- * - Dynamic help method based on comments
+ * - Dynamic help - per method based on comments
  * - Automatic config file documentation
  * - Pull Console Abstract to it's own repository
  * - Generic config sync from pssh

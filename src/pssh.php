@@ -4,6 +4,8 @@
  */
 class PSSH extends Console_Abstract
 {
+    public const VERSION = 1;
+
     /**
      * Callable Methods
      */
@@ -157,9 +159,6 @@ class PSSH extends Console_Abstract
     {
         $success = true;
 
-        $this->log('backup');
-        $this->log($files);
-
         $files = $this->prepArg($files, []);
 
         if (!is_dir($this->backup_dir))
@@ -167,15 +166,15 @@ class PSSH extends Console_Abstract
 
         foreach ($files as $file)
         {
-            $this->log("Backing up $file...");
+            // $this->log("Backing up $file...");
             if (!is_file($file))
             {
-                $this->log(" - Does not exist - skipping");
+                // $this->log(" - Does not exist - skipping");
                 continue;
             }
 
             $backup_file = $this->backup_dir . DS . basename($file) . '-' . $this->stamp() . '.bak';
-            $this->log(" - copying to $backup_file");
+            // $this->log(" - copying to $backup_file");
 
             // Back up target
             $success = ($success and copy($file, $backup_file));
@@ -193,15 +192,12 @@ class PSSH extends Console_Abstract
      */
     public function clean ($paths=null)
     {
-        $this->log('clean');
-
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
         $this->backup($paths);
 
         foreach ($paths as $path)
         {
-            $this->log($path);
             $config = new PSSH_Config($this);
             $config->readJSON($path);
             $config->clean();
@@ -216,10 +212,8 @@ class PSSH extends Console_Abstract
 	 */
 	public function export ($sources=array(), $target=null)
 	{
-		$this->log('export');
-
         $target = $this->prepArg($target, $this->ssh_config_path);
-        $sources = $this->prepArg($sources, $this->json_config_paths, true);
+        $sources = $this->prepArg($sources, $this->json_config_paths);
 
         $this->backup($target);
 
@@ -227,8 +221,6 @@ class PSSH extends Console_Abstract
         $config->readJSON($sources);
         $config->clean();
         $config->writeSSH($target);
-
-        $this->log("Done!");
     }
 
 	/**
@@ -238,8 +230,6 @@ class PSSH extends Console_Abstract
 	 */
 	public function import ($target=null, $source=null)
 	{
-		$this->log('import');
-
         // Defaults
         $target = $this->prepArg($this->json_import_path);
         $source = $this->prepArg($this->ssh_config_path);
@@ -250,8 +240,6 @@ class PSSH extends Console_Abstract
         $config->readSSH($source);
         $config->clean();
         $config->writeJSON($target);
-
-        $this->log('finished');
 	}
 
     /**
@@ -261,16 +249,26 @@ class PSSH extends Console_Abstract
      * @param $cli (prompt) - whether to upload server tools/aliases
      */
     public function init_host ($alias, $key=null, $cli=null) {
-        $this->log('init');
 
+        // Copy Key?
         if (is_null($key))
         {
             $key = $this->confirm('Copy Key?');
         }
+        if ($key)
+        {
+            $this->output('Enter ssh password for this host if prompted');
+            $this->exec("ssh-copy-id $alias");
+        }
 
-        if (is_null($cli) and !empty($this->cli_script))
+        // Set up Custom CLI Tools?
+        if (is_null($cli) and !empty($this->cli_script) and is_file($this->cli_script))
         {
             $cli = $this->confirm('Set up server cli tools?');
+        }
+        if ($cli)
+        {
+            $this->exec("bash {$this->cli_script} $alias");
         }
 
     }
@@ -283,8 +281,6 @@ class PSSH extends Console_Abstract
      */
     public function merge ($source_path, $target_path, $override_path)
     {
-		$this->log('merge');
-
         $this->backup($target_path);
         $this->backup($override_path);
 
@@ -304,8 +300,6 @@ class PSSH extends Console_Abstract
 
         $override->clean();
         $override->writeJSON($override_path);
-
-        $this->log('finished');
     }
 
     /**
@@ -316,7 +310,7 @@ class PSSH extends Console_Abstract
     {
         if (empty($this->sync)) return;
 
-        $this->output('Syncing:');
+        $this->output('Syncing...');
 
         if (substr($this->sync, 0, 4) == 'git@')
         {
@@ -327,19 +321,19 @@ class PSSH extends Console_Abstract
             // Set up git if not already done
             if (!is_dir($this->config_dir . DS . '.git'))
             {
-                $this->log('Running commands to initialize git');
+                // $this->log('Running commands to initialize git');
                 $this->exec("git init");
                 $this->exec("git remote add sync {$this->sync}");
             }
 
             // Pull
-            $this->log('Pulling from remote (sync)');
+            // $this->log('Pulling from remote (sync)');
             $this->exec("git pull sync master");
 
             // Set up git ignore if not already there
             if (!is_file($this->config_dir . DS . '.gitignore'))
             {
-                $this->log('Setting up default ignore file');
+                // $this->log('Setting up default ignore file');
                 $synced_config_json = empty($this->json_config_paths)
                     ? ''
                     : '!' . array_unshift($this->json_config_paths);
@@ -352,7 +346,7 @@ GITGNORE;
             }
 
             // Push
-            $this->log('Committing and pushing to remote (sync)');
+            // $this->log('Committing and pushing to remote (sync)');
             $this->exec("git add . --all");
             $this->exec("git commit -m \"Automatic sync commit - {$this->stamp()}\"");
             $this->exec("git push sync master");
@@ -367,8 +361,6 @@ GITGNORE;
      */
     public function initConfig()
     {
-        $this->log("PSSH::initConfig");
-
         $config_dir = $this->getConfigDir();
 
         // Config defaults
@@ -380,27 +372,16 @@ GITGNORE;
 
         $this->ssh_config_path = $_SERVER['HOME'] . DS . '.ssh' . DS . 'config';
 
+        $cli_script = $config_dir . DS . 'ssh_cli.sh';
+        if (is_file($cli_script))
+        {
+            $this->cli_script = $cli_script;
+        }
+
         $this->backup_dir = $config_dir . DS . 'backups';
 
         parent::initConfig();
     }
 }
 PSSH::run($argv);
-/**
- * todo
- * - init_host - finish
- * - runthrough for monday
- * ----------------------------
- * - more prepArg scenarios?
- * - rename pssh config? pssh data?
- * - command auto-completion
- * - search
- * - connection
- * - dynamic default port if other hosts exist
- * - sync file
- * - add - show new host data to clarify conflict
- *   - override to secondary file
- *   - try again, or adjust conflicting info
- *   - force add if appropriate (override)
- */
 ?>

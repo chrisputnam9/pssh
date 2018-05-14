@@ -72,8 +72,6 @@ class Console_Abstract
                     }
 
                     $instance->configure($arg_split[0], $arg_split[1]);
-
-                    $instance->pause();
                 }
                 else
                 {
@@ -96,7 +94,7 @@ class Console_Abstract
      */
     public function exec($command, $error=false)
     {
-        $this->log("exec: $command");
+        $this->log("exec: $command 2>&1");
         exec($command, $output, $return);
         $output = empty($output) ? "" : "\n\t" . implode("\n\t", $output);
         if ($return and $error)
@@ -104,7 +102,7 @@ class Console_Abstract
             $output = empty($output) ? $return : $output;
             $this->error($output);
         }
-        if (!empty($output)) $this->log($output);
+        $this->log($output);
         return $output;
     }
 
@@ -122,9 +120,9 @@ class Console_Abstract
 	}
 
 	/**
-	 * Warning output
+	 * Warn output
 	 */
-	public function warning($data)
+	public function warn($data)
 	{
 		$this->output('WARNING: ', false);
 		$this->output($data, true, false);
@@ -153,6 +151,12 @@ class Console_Abstract
         {
             $data = $data ? "(Bool) True" : "(Bool) False";
         }
+        else if (!is_string($data))
+        {
+            ob_start();
+            var_dump($data);
+            $data = ob_get_clean();
+        }
 
         $stamp_lines = is_null($stamp_lines) ? $this->stamp_lines : $stamp_lines;
 		if ($stamp_lines)
@@ -177,8 +181,8 @@ class Console_Abstract
         if (!$this->step) return;
 
         $this->hr();
-
-        $this->log($message);
+        $this->output($message);
+        $this->hr();
 
         $line = $this->input();
 
@@ -190,9 +194,9 @@ class Console_Abstract
 
     /**
      * Get selection from list - from CLI
-     * @param $list of items to pick from
-     * @param $message to show - prompt
-     * @param $default index 
+     * @param (array) $list of items to pick from
+     * @param (any) $message (none) to show - prompt
+     * @param (int) $default (0) index if no input
      */
     public function select($list, $message=false,$default=0)
     {
@@ -219,8 +223,24 @@ class Console_Abstract
     }
 
     /**
+     * Confirm yes/no
+     * @param $message to show - yes/no question
+     * @param $default (y) default if no input
+     * @return (bool) true/false
+     */
+    public function confirm($message, $default='y')
+    {
+        $yn = $this->input($message, $default);
+
+        // True if first letter of response is y or Y
+        return strtolower(substr($yn,0,1)) == 'y';
+    }
+
+    /**
      * Get input from CLI
      * @param $message to show - prompt
+     * @param $default if no input
+     * @return input text or default
      */
     public function input($message=false, $default=null)
     {
@@ -278,8 +298,6 @@ class Console_Abstract
      */
     public function initConfig()
     {
-        $this->log("Console_Abstract::initConfig");
-
         $config_dir = $this->getConfigDir();
         $config_file = $this->getConfigFile();
 
@@ -287,13 +305,13 @@ class Console_Abstract
         {
             if (!is_dir($config_dir))
             {
-                $this->log("Creating directory - $config_dir");
+                // $this->log("Creating directory - $config_dir");
                 mkdir($config_dir, 0755);
             }
 
             if (is_file($config_file))
             {
-                $this->log("Loading config file - $config_file");
+                // $this->log("Loading config file - $config_file");
                 $json = file_get_contents($config_file);
                 $config = json_decode($json, true);
                 foreach ($config as $key => $value)
@@ -303,7 +321,7 @@ class Console_Abstract
             }
             else
             {
-                $this->log("Creating default config file - $config_file");
+                // $this->log("Creating default config file - $config_file");
                 $config = [];
                 foreach ($this->getPublicProperties() as $property)
                 {
@@ -351,13 +369,16 @@ class Console_Abstract
         }
 
         // Trim
-        if (is_string($value))
+        if ($trim)
         {
-            $value = trim($value);
-        }
-        else if (is_array($value))
-        {
-            $value = array_map('trim', $value);
+            if (is_string($value))
+            {
+                $value = trim($value);
+            }
+            else if (is_array($value))
+            {
+                $value = array_map('trim', $value);
+            }
         }
 
         return $value;
@@ -368,9 +389,6 @@ class Console_Abstract
      */
     public function configure($key, $value)
     {
-        $this->log("Configuring - $key:");
-        $this->log($value);
-
         if (substr($key, 0, 3) == 'no-' and $value === true)
         {
             $key = substr($key, 3);
@@ -425,18 +443,4 @@ class Console_Abstract
         }
     }
 }
-
-/**
- * todo
- * - Basic help - method list
- * - Automatic install method
- * - Automatic version check and update
- * - no-input flag for scripting
- * - Dynamic help - per method based on comments
- * - Automatic config file documentation
- * - Pull Console Abstract to it's own repository
- * - Generic config sync from pssh
- * - Generic config backup from pssh
- */
-
 ?>

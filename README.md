@@ -1,34 +1,41 @@
 # Getting Started
 
+Quick getting started information for the most common use case.
+
 ## Install PSSH
-1. Make sure you have PHP
-2. Download and make pssh executable
+1. Make sure you have PHP, or install it if not
+2. Clone the pssh repository to the location of your choice
 
-    
+        cd /opt
+        git clone https://github.com/chrisputnam9/pssh.git
 
-3. Move/symlink into path or set up alias
+3. Move/symlink into path, add pssh directory into path, or set up alias
 
+        ln -s /opt/pssh/pssh /usr/local/bin/pssh
 
+4. Re-pull as needed to update
 
-4. Re-download as needed to update
+        cd /opt/pssh
+        git pull origin master
 
 ## Import Existing Config
-1. Import your current config to a new personal JSON file
+1. Import your current config to a new JSON file (~/.pssh/ssh_config_imported.json)
 
         pssh import
 
-2. Sync up your work config, or manually separate imported json into work & personal files. See generated ~/.pssh/config for all relevant default paths. If using a private git repository to sync up, you can simply fill in the ssh (git@) URL into ~/.pssh/config - as the value for 'sync'.  Syncing will run before and after adding a new host automatically if configured.  It can also be run with:
+2. Add git URL for your company's shared SSH config into ~/.pssh/config.json (sync:), then run:
 
         pssh sync
 
-3. If syncing existing work file, the merge command will help you merge your imported json into your synced work json file.
+3. Merge your imported json into your synced work json file, putting overrides into a personal file
+   (this is automatically ignored by the default .gitignore, so you'll need to sync/back this up yourself as needed)
 
         pssh merge ~/.pssh/ssh_config_imported.json ~/.pssh/ssh_config_work.json ~/.pssh/ssh_config_personal.json
 
 4. Review the personal file - conflicts will be placed here, some may require manual adjustments.
-   See comment in pssh section for each host.
 
-5. Diff the work file to make sure you don't sync something you wanted to keep private!
+5. Diff the work file to make sure you don't sync something you wanted to keep private!  Move host
+   entries to personal file as needed.
 
         git difftool
 
@@ -36,6 +43,10 @@
 
         pssh sync
 
-# General Usage
-
 # Config File Details
+
+Coming Soon
+
+# Usage
+
+Coming Soon

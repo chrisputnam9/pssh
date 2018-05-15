@@ -355,7 +355,7 @@ class PSSH_Config
 
         if (empty($this->data['ssh']['identityfile']))
         {
-            $this->data['ssh']['identityfile'] = $_SERVER['HOME'] . DS . '.ssh' . DS . 'id_rsa';
+            $this->data['ssh']['identityfile'] = 'id_rsa';
         }
 
         ksort($this->data['ssh']);

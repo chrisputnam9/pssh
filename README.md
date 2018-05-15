@@ -37,6 +37,7 @@ Quick getting started information for the most common use case.
 5. Diff the work file to make sure you don't sync something you wanted to keep private!  Move host
    entries to personal file as needed.
 
+        cd ~/.pssh_config
         git difftool
 
 4. Sync again when ready

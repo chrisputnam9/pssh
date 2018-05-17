@@ -20,8 +20,8 @@ class PSSH extends Console_Abstract
         'sync',
     ];
 
-    // Name of directory to store config
-    protected const CONFIG_DIR = 'pssh';
+    // Name of script and directory to store config
+    protected const SHORTNAME = 'pssh';
 
     // Config defaults
     public $json_config_paths = [];
@@ -41,7 +41,7 @@ class PSSH extends Console_Abstract
      * @param $user - username
      * @param $port - port
 	 */
-	public function add ($target=null, $hostname=null, $user=null, $alias=null, $port=null)
+	public function add($target=null, $hostname=null, $user=null, $alias=null, $port=null)
     {
 
         // Sync before - to get latest data
@@ -63,7 +63,7 @@ class PSSH extends Console_Abstract
         // Hostname
         if (is_null($hostname))
         {
-            $hostname = $this->input('HostName (URL/IP)');
+            $hostname = $this->input('HostName (URL/IP)', null, true);
         }
         else
         {
@@ -85,7 +85,7 @@ class PSSH extends Console_Abstract
             {
                 $this->output("NOTE: existing users configured for this hostname: (" . join(", ", $existing_users) . ")");
             }
-            $user = $this->input('User');
+            $user = $this->input('User', null, true);
         }
         else
         {
@@ -190,7 +190,7 @@ class PSSH extends Console_Abstract
      *  - import, clean, re-export
      * @param $path - json file(s) to clean - default to paths configured
      */
-    public function clean ($paths=null)
+    public function clean($paths=null)
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
@@ -210,7 +210,7 @@ class PSSH extends Console_Abstract
      * @param $sources - source JSON files - to be merged in order
 	 * @param $target - source ssh config file
 	 */
-	public function export ($sources=array(), $target=null)
+	public function export($sources=array(), $target=null)
 	{
         $target = $this->prepArg($target, $this->ssh_config_path);
         $sources = $this->prepArg($sources, $this->json_config_paths);
@@ -228,11 +228,11 @@ class PSSH extends Console_Abstract
 	 * @param $target - target file to save JSON
 	 * @param $source - source ssh config file
 	 */
-	public function import ($target=null, $source=null)
+	public function import($target=null, $source=null)
 	{
         // Defaults
-        $target = $this->prepArg($this->json_import_path);
-        $source = $this->prepArg($this->ssh_config_path);
+        $target = $this->prepArg($target, $this->json_import_path);
+        $source = $this->prepArg($source, $this->ssh_config_path);
 
         $this->backup($target);
 
@@ -248,7 +248,7 @@ class PSSH extends Console_Abstract
      * @param $key (prompt) - whether to copy key
      * @param $cli (prompt) - whether to upload server tools/aliases
      */
-    public function init_host ($alias, $key=null, $cli=null) {
+    public function init_host($alias, $key=null, $cli=null) {
 
         // Copy Key?
         if (is_null($key))
@@ -279,7 +279,7 @@ class PSSH extends Console_Abstract
      * @param $target_path - file to merge INTO
      * @param $override_path - file to output conflicts/overrides
      */
-    public function merge ($source_path, $target_path, $override_path)
+    public function merge($source_path, $target_path, $override_path)
     {
         $this->backup($target_path);
         $this->backup($override_path);
@@ -306,7 +306,7 @@ class PSSH extends Console_Abstract
      * Sync - if configured
      *  - currently supports private git repository
      */
-    public function sync ()
+    public function sync()
     {
         if (empty($this->sync)) return;
 

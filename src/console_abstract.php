@@ -10,6 +10,13 @@ define('DS', DIRECTORY_SEPARATOR);
  */
 class Console_Abstract
 {
+    /**
+     * Callable Methods
+     */
+    protected const METHODS = [
+        'help',
+    ];
+
 	/**
 	 * Config defaults
 	 */
@@ -53,8 +60,11 @@ class Console_Abstract
         {
             $instance->initConfig();
 
+            $valid_methods = array_merge($class::METHODS, self::METHODS);
             if (!in_array($method, $class::METHODS))
             {
+                $instance->help($class);
+                $instance->hr();
                 $instance->error("Invalid method - $method");
             }
 
@@ -83,6 +93,38 @@ class Console_Abstract
 
         } catch (Exception $e) {
             $instance->error($e->getMessage());
+        }
+    }
+
+    /**
+     * Help - show help/usage
+     */
+    public function help($class)
+    {
+        $methods = array_merge($class::METHODS, self::METHODS);
+        $this->hr();
+        $this->output("USAGE:");
+        $this->output("\t".$class::SHORTNAME." <method> (argument1) (argument2) ... [options]\n");
+        $this->output("METHODS (ARGUMENTS):");
+        foreach($methods as $method)
+        {
+            $string = "\t" . $method . " ( ";
+            $r = new ReflectionObject($this);
+            $rm = $r->getMethod($method);
+            // $r = new ReflectionFunction(array($this, $method));
+            foreach ($rm->getParameters() as $param)
+            {
+                $string.= $param->name . " ";
+            }
+            $string.=")";
+            // $string = str_pad($string, 40, ".");
+            $this->output($string);
+        }
+        $this->output("");
+        $this->output("OPTIONS:");
+        foreach ($this->getPublicProperties() as $property)
+        {
+            $this->output("\t--$property");
         }
     }
 
@@ -242,7 +284,7 @@ class Console_Abstract
      * @param $default if no input
      * @return input text or default
      */
-    public function input($message=false, $default=null)
+    public function input($message=false, $default=null, $required=false)
     {
         if ($message)
         {
@@ -251,11 +293,25 @@ class Console_Abstract
                 $message.= " ($default)";
             }
             $message.= ": ";
-            $this->output($message, false);
         }
-        $line = fgets($this->getCliInputHandle());
-        $line = trim($line);
-        return empty($line) ? $default : $line;
+
+        while (true)
+        {
+            $this->output($message, false);
+            $line = fgets($this->getCliInputHandle());
+            $line = trim($line);
+
+            // Entered input - return
+            if (!empty($line)) return $line;
+
+            // Input not required? Return default
+            if (!$required) return $default;
+
+            // otherwise, warn, loop and try again
+            $this->warn("Input required - please try again");
+        }
+
+
     }
 
     /**
@@ -273,7 +329,7 @@ class Console_Abstract
     {
         if (is_null($this->config_dir))
         {
-            $this->config_dir = $_SERVER['HOME'] . DS . '.' . static::CONFIG_DIR;
+            $this->config_dir = $_SERVER['HOME'] . DS . '.' . static::SHORTNAME;
         }
 
         return $this->config_dir;
@@ -314,6 +370,10 @@ class Console_Abstract
                 // $this->log("Loading config file - $config_file");
                 $json = file_get_contents($config_file);
                 $config = json_decode($json, true);
+                if (empty($config))
+                {
+                    $this->error("Likely Syntax Error: $config_file");
+                }
                 foreach ($config as $key => $value)
                 {
                     $this->configure($key, $value);
@@ -351,6 +411,9 @@ class Console_Abstract
      */
     public function prepArg($value, $default, $force_array=null, $trim=true)
     {
+        $a = func_num_args();
+        if ($a < 2) $this->error('prepArg requires value & default');
+
         if (is_null($force_array))
         {
             $force_array = is_array($default);

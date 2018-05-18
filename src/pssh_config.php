@@ -361,6 +361,8 @@ class PSSH_Config
         ksort($this->data['ssh']);
         ksort($this->data['hosts']);
 
+        $final_map=array();
+
         foreach ($this->data['hosts'] as $alias => &$host)
         {
             $hostname = empty($host['ssh']['hostname']) ? false : $host['ssh']['hostname'];
@@ -371,9 +373,26 @@ class PSSH_Config
                 $host['pssh']['alias'] = $alias;
             }
 
+            $pssh_alias = $host['pssh']['alias'];
+            if (!isset($final_map[$pssh_alias]))
+            {
+                $final_map[$pssh_alias] = array();
+            }
+
+            $final_map[$pssh_alias][]= $alias;
+
             if (!empty($hostname))
             {
                 $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname']);
+            }
+        }
+
+        foreach ($final_map as $final => $keys)
+        {
+            $c = count($keys);
+            if ($c > 1)
+            {
+                $this->warn("$c hosts using alias '$final' - " . implode(", ", $keys));
             }
         }
     }

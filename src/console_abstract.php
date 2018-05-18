@@ -61,9 +61,9 @@ class Console_Abstract
             $instance->initConfig();
 
             $valid_methods = array_merge($class::METHODS, self::METHODS);
-            if (!in_array($method, $class::METHODS))
+            if (!in_array($method, $valid_methods))
             {
-                $instance->help($class);
+                $instance->help();
                 $instance->hr();
                 $instance->error("Invalid method - $method");
             }
@@ -99,12 +99,13 @@ class Console_Abstract
     /**
      * Help - show help/usage
      */
-    public function help($class)
+    public function help()
     {
-        $methods = array_merge($class::METHODS, self::METHODS);
+        $methods = array_merge(static::METHODS, self::METHODS);
+
         $this->hr();
         $this->output("USAGE:");
-        $this->output("\t".$class::SHORTNAME." <method> (argument1) (argument2) ... [options]\n");
+        $this->output("\t".static::SHORTNAME." <method> (argument1) (argument2) ... [options]\n");
         $this->output("METHODS (ARGUMENTS):");
         foreach($methods as $method)
         {
@@ -126,6 +127,10 @@ class Console_Abstract
         {
             $this->output("\t--$property");
         }
+        $this->output("");
+        $this->output("Note: for true/false options, prefix no- to set to fales");
+        $this->output("      for example: pssh export --no-sync");
+        $this->hr();
     }
 
     /**

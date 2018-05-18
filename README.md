@@ -3,7 +3,8 @@
 Quick getting started information for the most common use case.
 
 ## Install PSSH
-1. Make sure you have PHP, or install it if not
+1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php
+
 2. Clone the pssh repository to the location of your choice
 
         cd /opt
@@ -19,7 +20,7 @@ Quick getting started information for the most common use case.
         git pull origin master
 
 ## Import Existing Config
-1. Import your current config to a new JSON file (~/.pssh/ssh_config_imported.json)
+1. Import your current config to a new JSON file (~/.pssh/ssh\_config\_imported.json)
 
         pssh import
 
@@ -37,17 +38,71 @@ Quick getting started information for the most common use case.
 5. Diff the work file to make sure you don't sync something you wanted to keep private!  Move host
    entries to personal file as needed.
 
-        cd ~/.pssh_config
+        cd ~/.pssh
         git difftool
 
-4. Sync again when ready
+6. Export new JSON files to ssh config and test
+
+        pssh export
+        ssh oneofyourhosts
+
+7. Sync again when ready
 
         pssh sync
 
-# Config File Details
-
-Coming Soon
-
 # Usage
 
-Coming Soon
+    USAGE:
+        pssh <method> (argument1) (argument2) ... [options]
+
+    METHODS (ARGUMENTS):
+        add ( target hostname user alias port )
+        backup ( files )
+        clean ( paths )
+        export ( sources target )
+        import ( target source )
+        init_host ( alias key cli )
+        merge ( source_path target_path override_path )
+        sync ( )
+        help ( )
+
+    OPTIONS:
+        --json_config_paths
+        --json_import_path
+        --ssh_config_path
+        --cli_script
+        --sync
+        --backup_dir
+        --verbose
+        --stamp_lines
+        --step
+
+    Note: for true/false options, prefix no- to set to fales
+        for example: pssh export --no-sync
+
+# Config File
+Options can be set in config. Options in config will be overridden by those passed by flags.
+
+**Sample:**
+
+    {
+        "backup_dir": "~/.pssh/backups",
+        "cli_script": "~/.pssh/ssh_cli.sh",
+        "json_config_paths": [
+            "~/.pssh/ssh_config_work.json",
+            "~/.pssh/ssh_config_personal.json"
+        ],
+        "json_import_path": "~/.pssh/ssh_config_imported.json",
+        "ssh_config_path": "~/.ssh/config",
+        "stamp_lines": false,
+        "step": false,
+        "sync": "git@...",
+        "verbose": false
+    }
+
+# Miscellaneous
+Many thanks to all who've helped with suggestions, testing, and motivation!
+
+- [Theodore Slechta](https://github.com/theodoreslechta)
+- Mark Johnson
+- Paul Cohen

@@ -77,8 +77,9 @@ Quick getting started information for the most common use case.
         --stamp_lines
         --step
 
-    Note: for true/false options, prefix no- to set to fales
-        for example: pssh export --no-sync
+    Note: for true/false options, prefix no- to set to fales. For example:
+
+        pssh export --no-sync
 
 # Config File
 Options can be set in config. Options in config will be overridden by those passed by flags.

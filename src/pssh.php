@@ -79,7 +79,7 @@ class PSSH extends Console_Abstract
         // User Name
         if (is_null($user))
         {
-            $existing = $config->find(array('hostname'=>$hostname));
+            $existing = $config->find(['hostname'=>$hostname]);
             $existing_users = array_keys($existing['hostname']);
             if (!empty($existing_users))
             {
@@ -210,7 +210,7 @@ class PSSH extends Console_Abstract
      * @param $sources - source JSON files - to be merged in order
 	 * @param $target - source ssh config file
 	 */
-	public function export($sources=array(), $target=null)
+	public function export($sources=[], $target=null)
 	{
         $target = $this->prepArg($target, $this->ssh_config_path);
         $sources = $this->prepArg($sources, $this->json_config_paths);

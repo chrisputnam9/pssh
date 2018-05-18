@@ -10,6 +10,7 @@ class PSSH_Config
 	 * Map of keys to preferred case
 	 */
 	public const KEY_CASE_MAP = [
+        'host' => 'Host',// just to stop error
 		'hostname' => 'HostName',
 		'identitiesonly' => 'IdentitiesOnly',
 		'identityfile' => 'IdentityFile',
@@ -361,7 +362,7 @@ class PSSH_Config
         ksort($this->data['ssh']);
         ksort($this->data['hosts']);
 
-        $final_map=array();
+        $final_map = [];
 
         foreach ($this->data['hosts'] as $alias => &$host)
         {
@@ -376,7 +377,7 @@ class PSSH_Config
             $pssh_alias = $host['pssh']['alias'];
             if (!isset($final_map[$pssh_alias]))
             {
-                $final_map[$pssh_alias] = array();
+                $final_map[$pssh_alias] = [];
             }
 
             $final_map[$pssh_alias][]= $alias;

@@ -89,7 +89,7 @@ class Console_Abstract
                 }
             }
 
-            call_user_func_array(array($instance, $method), $args);
+            call_user_func_array([$instance, $method], $args);
 
         } catch (Exception $e) {
             $instance->error($e->getMessage());
@@ -112,7 +112,6 @@ class Console_Abstract
             $string = "\t" . $method . " ( ";
             $r = new ReflectionObject($this);
             $rm = $r->getMethod($method);
-            // $r = new ReflectionFunction(array($this, $method));
             foreach ($rm->getParameters() as $param)
             {
                 $string.= $param->name . " ";
@@ -158,8 +157,10 @@ class Console_Abstract
 	 */
 	public function error($data, $code=500)
 	{
+        $this->hr('!');
 		$this->output('ERROR: ', false);
 		$this->output($data);
+        $this->hr('!');
 		if ($code)
 		{
 			exit($code);
@@ -171,8 +172,10 @@ class Console_Abstract
 	 */
 	public function warn($data)
 	{
+        $this->hr('*');
 		$this->output('WARNING: ', false);
 		$this->output($data, true, false);
+        $this->hr('*');
 	}
 
     /**
@@ -215,9 +218,10 @@ class Console_Abstract
     /**
      * Output horizonal line - divider
      */
-    public function hr()
+    public function hr($c='=')
     {
-        $this->output("==================================================");
+        $string = str_pad("", 60, $c);
+        $this->output($string);
     }
 
     /**

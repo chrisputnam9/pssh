@@ -17,6 +17,7 @@ class PSSH extends Console_Abstract
         'import',
         'init_host',
         'merge',
+        'search',
         'sync',
     ];
 
@@ -194,10 +195,15 @@ class PSSH extends Console_Abstract
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
+        $this->log("Cleaning config files:");
+        $this->log($paths);
+
+        $this->log("Backing up...");
         $this->backup($paths);
 
         foreach ($paths as $path)
         {
+            $this->log("Cleaning '$path'");
             $config = new PSSH_Config($this);
             $config->readJSON($path);
             $config->clean();
@@ -300,6 +306,52 @@ class PSSH extends Console_Abstract
 
         $override->clean();
         $override->writeJSON($override_path);
+    }
+
+    /**
+     * Search - search for host config via PSSH_Config::search
+     * @param $terms - pass through
+	 * @param $paths - config files to search - defaults to all configured paths
+     */
+    public function search($terms, $paths=null)
+    {
+        $paths = $this->prepArg($paths, $this->json_config_paths);
+
+        $this->log("Searching config files:");
+        $this->log($paths);
+
+        $config = new PSSH_Config($this);
+        $config->readJSON($paths);
+
+        $results = $config->search($terms);
+
+        if (empty($results))
+        {
+            $this->output("No results found");
+        }
+        else
+        {
+            $count = count($results);
+            $this->hr();
+            $this->output("Found $count total matches: ");
+            $this->hr();
+
+            foreach ($results as $r => $result)
+            {
+                if ($r > 0 and $r%5 == 0)
+                {
+                    $this->hr();
+                    $key = $this->input("[ c - SHOW MORE | q - QUIT ]", 'c', false, true);
+                    if ($key == 'q')
+                    {
+                        break;
+                    }
+                    $this->hr();
+                }
+                $this->output($result, false);
+            }
+            $this->hr();
+        }
     }
 
     /**

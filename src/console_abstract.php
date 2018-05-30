@@ -89,7 +89,14 @@ class Console_Abstract
                 }
             }
 
+            $call_info = "$class->$method(" . implode(",", $args) . ")";
+            $instance->log("Calling $call_info");
+            $instance->hrl();
+
             call_user_func_array([$instance, $method], $args);
+
+            $instance->hrl();
+            $instance->log("$call_info complete");
 
         } catch (Exception $e) {
             $instance->error($e->getMessage());
@@ -216,6 +223,23 @@ class Console_Abstract
     }
 
     /**
+     * Output break
+     */
+    public function br()
+    {
+        $this->output('');
+    }
+
+    /**
+     * br, but only if logging is on
+     */
+    public function brl()
+    {
+        if (!$this->verbose) return;
+
+        $this->br;
+    }
+    /**
      * Output horizonal line - divider
      */
     public function hr($c='=')
@@ -223,6 +247,16 @@ class Console_Abstract
         $string = str_pad("", 60, $c);
         $this->output($string);
     }
+    /**
+     * hr, but only if logging is on
+     */
+    public function hrl($c='=')
+    {
+        if (!$this->verbose) return;
+
+        $this->hr($c);
+    }
+
 
     /**
      * Pause during output for debugging/stepthrough
@@ -293,7 +327,7 @@ class Console_Abstract
      * @param $default if no input
      * @return input text or default
      */
-    public function input($message=false, $default=null, $required=false)
+    public function input($message=false, $default=null, $required=false, $single=false)
     {
         if ($message)
         {
@@ -307,7 +341,17 @@ class Console_Abstract
         while (true)
         {
             $this->output($message, false);
-            $line = fgets($this->getCliInputHandle());
+            if ($single)
+            {
+                $line = strtolower( trim( `bash -c "read -n 1 -t 10 INPUT ; echo \\\$INPUT"` ) );
+                $this->output('');
+                // $line = fgetc($handle);
+            }
+            else
+            {
+                $handle = $this->getCliInputHandle();
+                $line = fgets($handle);
+            }
             $line = trim($line);
 
             // Entered input - return
@@ -461,7 +505,9 @@ class Console_Abstract
      */
     public function configure($key, $value)
     {
-        if (substr($key, 0, 3) == 'no-' and $value === true)
+        $key = str_replace('-', '_', $key);
+
+        if (substr($key, 0, 3) == 'no_' and $value === true)
         {
             $key = substr($key, 3);
             $value = false;

@@ -619,7 +619,7 @@ class PSSH_Config
                 $host_config['pssh']['alias'] = $alias;
             }
 
-            $host_output = $this->writeSSHHost($host);
+            $host_output = $this->writeSSHHost($host_config);
             fwrite($path_handle, $host_output);
         }
 

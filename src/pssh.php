@@ -24,24 +24,33 @@ class PSSH extends Console_Abstract
     // Name of script and directory to store config
     protected const SHORTNAME = 'pssh';
 
-    // Config defaults
+    // Config Variables
+    protected $__json_config_paths = ["Main JSON config file paths", "string"];
     public $json_config_paths = [];
+
+    protected $__json_import_path = ["Default JSON config import path", "string"];
     public $json_import_path = null;
+
+    protected $__ssh_config_path = ["Default SSH config path", "string"];
     public $ssh_config_path = null;
 
+    protected $__cli_script = ["CLI script to install on hosts during init", "string"];
     public $cli_script = '';
+
+    protected $__sync = ["Git SSH URL to sync config data", "string"];
     public $sync = '';
 
+    protected $__backup_dir = ["Default backup directory", "string"];
     public $backup_dir = null;
 
-    /**
-     * Add new SSH host interactively
-     * All params - leave empty to prompt
-     * @param $target - JSON file to add 
-     * @param $hostname - hostname/url/ip
-     * @param $user - username
-     * @param $port - port
-	 */
+    protected $___add = [
+        "Add new SSH host - interactive, or specify options",
+        ["JSON file to add host to", "string"],
+        ["Hostname - domain or IP", "string"],
+        ["Username", "string"],
+        ["Alias", "string"],
+        ["Port", "integer"],
+    ];
 	public function add($target=null, $hostname=null, $user=null, $alias=null, $port=null)
     {
 
@@ -152,10 +161,10 @@ class PSSH extends Console_Abstract
         $this->output('Done!');
     }
 
-    /**
-     * Backup a file or files to the pssh backup folder
-     * @param $files - string path or array of string paths
-     */
+    protected $___backup = [
+        "Backup a file or files to the pssh backup folder",
+        ["Paths to back up", "string", "required"],
+    ];
     public function backup($files)
     {
         $success = true;
@@ -186,11 +195,10 @@ class PSSH extends Console_Abstract
         return $success;
     }
 
-    /**
-     * Clean json config files
-     *  - import, clean, re-export
-     * @param $path - json file(s) to clean - default to paths configured
-     */
+    protected $___clean = [
+        "Clean json config files",
+        ["JSON file(s) to clean - defaults to json-config-paths", "string"],
+    ];
     public function clean($paths=null)
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
@@ -211,11 +219,11 @@ class PSSH extends Console_Abstract
         }
     }
 
-	/**
-	 * Export JSON config to SSH config file
-     * @param $sources - source JSON files - to be merged in order
-	 * @param $target - source ssh config file
-	 */
+    protected $___export = [
+        "Export JSON config to SSH config file",
+        ["Source JSON files - defaults to json-config-paths", "string"],
+        ["Target SSH config file - defaults to ssh-config-path", "string"],
+    ];
 	public function export($sources=[], $target=null)
 	{
         $target = $this->prepArg($target, $this->ssh_config_path);
@@ -229,11 +237,11 @@ class PSSH extends Console_Abstract
         $config->writeSSH($target);
     }
 
-	/**
-	 * Import SSH config data into JSON
-	 * @param $target - target file to save JSON
-	 * @param $source - source ssh config file
-	 */
+    protected $___import = [
+        "Import SSH config data into JSON",
+        ["Target JSON file - defaults to json-import-path", "string"],
+        ["Source SSH config file - defaults to ssh-config-path"],
+    ];
 	public function import($target=null, $source=null)
 	{
         // Defaults
@@ -248,12 +256,12 @@ class PSSH extends Console_Abstract
         $config->writeJSON($target);
 	}
 
-    /**
-     * Initialize host
-     * @param $alias - alias of host to initialize
-     * @param $key (prompt) - whether to copy key
-     * @param $cli (prompt) - whether to upload server tools/aliases
-     */
+    protected $___init_host = [
+        "Initialize host - interactive, or specify options",
+        ["Alias of host", "string", "required"],
+        ["Whether to copy your ssh key to the server", "boolean"],
+        ["Whether to set up server CLI using cli_script", "boolean"],
+    ];
     public function init_host($alias, $key=null, $cli=null) {
 
         // Copy Key?
@@ -279,12 +287,12 @@ class PSSH extends Console_Abstract
 
     }
 
-    /**
-     * Merge config from one JSON file into another
-     * @param $source_path - file to merge FROM
-     * @param $target_path - file to merge INTO
-     * @param $override_path - file to output conflicts/overrides
-     */
+    protected $___merge = [
+        "Merge config from one JSON file into another",
+        ["JSON file to merge from", "string", "required"],
+        ["JSON file to merge into", "string", "required"],
+        ["JSON file to ouput conflicts/overrides", "string", "required"],
+    ];
     public function merge($source_path, $target_path, $override_path)
     {
         $this->backup($target_path);
@@ -308,11 +316,11 @@ class PSSH extends Console_Abstract
         $override->writeJSON($override_path);
     }
 
-    /**
-     * Search - search for host config via PSSH_Config::search
-     * @param $terms - pass through
-	 * @param $paths - config files to search - defaults to all configured paths
-     */
+    protected $___search = [
+        "Search for host configuration",
+        ["Term(s) to search - separate with spaces", "string", "required"],
+        ["JSON config path(s) to search - defaults to json-config-paths", "string"],
+    ];
     public function search($terms, $paths=null)
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
@@ -355,9 +363,10 @@ class PSSH extends Console_Abstract
     }
 
     /**
-     * Sync - if configured
+     * 
      *  - currently supports private git repository
      */
+    protected $___sync = "Sync config files based on 'sync' config/option value";
     public function sync()
     {
         if (empty($this->sync)) return;

@@ -4,6 +4,10 @@
  */
 define('DS', DIRECTORY_SEPARATOR);
 
+// Enable and show errors
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 /**
  * Console Abstract
  * Reusable abstract for creating PHP shell utilities
@@ -17,12 +21,24 @@ class Console_Abstract
         'help',
     ];
 
+    /**
+     * Padding for output
+     */
+    protected const PAD_FULL = 100;
+    protected const PAD_COL1 = 25;
+    protected const PAD_COL2 = 40;
+
 	/**
-	 * Config defaults
+	 * Config/option defaults
 	 */
-	public $verbose = false;
+    protected $__stamp_lines = "Stamp output lines";
 	public $stamp_lines = false;
+
+    protected $__step = "Enable stepping points";
 	public $step = false;
+
+    protected $__verbose = "Enable verbose output";
+	public $verbose = false;
 
     /**
      * Config paths
@@ -103,41 +119,192 @@ class Console_Abstract
         }
     }
 
-    /**
-     * Help - show help/usage
-     */
-    public function help()
+    protected $___help = [
+        "Shows help/usage information.",
+        ["Method/option for specific help", "string"],
+    ];
+    public function help($specific=false)
     {
+        // Specific help?
+        if ($specific) return $this->_help_specific($specific);
+
         $methods = array_merge(static::METHODS, self::METHODS);
 
-        $this->hr();
-        $this->output("USAGE:");
-        $this->output("\t".static::SHORTNAME." <method> (argument1) (argument2) ... [options]\n");
-        $this->output("METHODS (ARGUMENTS):");
+        $this->output("USAGE:\n");
+        $this->output(static::SHORTNAME." <method> (argument1) (argument2) ... [options]\n");
+
+        $this->hr('-');
+        $this->output3col("METHOD", "INFO");
+        $this->hr('-');
+
         foreach($methods as $method)
         {
-            $string = "\t" . $method . " ( ";
-            $r = new ReflectionObject($this);
-            $rm = $r->getMethod($method);
-            foreach ($rm->getParameters() as $param)
-            {
-                $string.= $param->name . " ";
-            }
-            $string.=")";
-            // $string = str_pad($string, 40, ".");
-            $this->output($string);
+            $string = "";
+            $help_text = "";
+            $help = $this->_help_var($method, 'method');
+            $help_text = empty($help) ? "" : array_shift($help);
+            $this->output3col($method, $help_text);
         }
+
+        $this->hr('-');
+        $this->output("To get more help for a specific method:  ".static::SHORTNAME." help <method>");
+
         $this->output("");
-        $this->output("OPTIONS:");
+        $this->hr('-');
+        $this->output3col("OPTION", "TYPE", "INFO");
+        $this->hr('-');
         foreach ($this->getPublicProperties() as $property)
         {
-            $this->output("\t--$property");
+            $property = str_replace('_', '-', $property);
+            $help = $this->_help_var($property, 'option');
+            $type = "";
+            $info = "";
+            if ($help)
+            {
+                $help = $this->_help_param($help);
+                $type = "($help[1])";
+                $info = $help[0];
+            }
+            $this->output3col("--$property", $type, $info);
         }
-        $this->output("");
-        $this->output("Note: for true/false options, prefix no- to set to fales");
-        $this->output("      for example: pssh export --no-sync");
-        $this->hr();
+        $this->hr('-');
+        $this->output("Use no- to set boolean option to false - eg. --no-stamp-lines");
     }
+
+        /**
+        * Show help for a specific method or option
+        */
+        protected function _help_specific($specific)
+        {
+            $help = $this->_help_var($specific);
+            if (empty($help))
+            {
+                $this->error("No help found for '$specific'");
+            }
+
+            $specific = str_replace('-', '_', $specific);
+
+            if (is_callable(array($this, $specific)))
+            {
+                // Method Usage
+                $help_text = array_shift($help);
+
+                $usage = static::SHORTNAME." $specific";
+                $params = $this->_getMethodParams($specific);
+                foreach ($params as $p => $param)
+                {
+                    $help_param = $this->_help_param($help[$p]);
+
+                    $param = $help_param['string']
+                        ? "\"$param\""
+                        : $param;
+
+                    $param = $help_param['optional']
+                        ? "($param)"
+                        : $param;
+
+                    $usage.= " $param";
+                }
+
+                $usage.= " [options]";
+
+                $this->output("USAGE:\n");
+                $this->output("$usage\n");
+
+                $this->hr('-');
+                $this->output3col("METHOD", "INFO");
+                $this->hr('-');
+                $this->output3col($specific, $help_text);
+                $this->hr('-');
+                $this->br();
+
+                if (!empty($params))
+                {
+                    $this->hr('-');
+                    $this->output3col("PARAMETER", "TYPE", "INFO");
+                    $this->hr('-');
+                    foreach ($params as $p => $param)
+                    {
+                        $help_param = $this->_help_param($help[$p]);
+                        $output = $help_param['optional'] ? "" : "*";
+                        $output.= $param;
+                        $this->output3col($output, "($help_param[1])", $help_param[0]);
+                    }
+                    $this->hr('-');
+                    $this->output("* Required parameter");
+                }
+            }
+            else if (isset($this->$specific))
+            {
+                // Option info
+                $help_param = $this->_help_param($help);
+                $specific = str_replace('_', '-', $specific);
+
+                $this->hr('-');
+                $this->output3col("OPTION", "(TYPE)", "INFO");
+                $this->hr('-');
+                $this->output3col("--$specific", "($help_param[1])", $help_param[0]);
+                $this->hr('-');
+            }
+        }
+
+        /**
+        * Get help var for specific method or option
+        */
+        protected function _help_var($specific, $type=false)
+        {
+            $help = false;
+            $specific = str_replace('-', '_', $specific);
+
+            if ($type == 'method' or empty($type))
+            {
+                $help_var = "___" . $specific;
+            }
+
+            if ($type == 'option' or (empty($type) and empty($this->$help_var)))
+            {
+                $help_var = "__" . $specific;
+            }
+
+            if (!empty($this->$help_var))
+            {
+                $help = $this->$help_var;
+                if (!is_array($help))
+                {
+                    $help = [$help];
+                }
+            }
+            return $help;
+        }
+
+        /**
+         * Clean help param - fill in defaults
+         */
+        protected function _help_param ($param)
+        {
+            if (!is_array($param))
+            {
+                $param = [$param];
+            }
+
+            if (empty($param[1]))
+            {
+                $param[1] = "boolean";
+            }
+
+            if (empty($param[2]))
+            {
+                $param[2] = "optional";
+            }
+
+            $param['optional'] = ($param[2] == 'optional');
+            $param['required'] = !$param['optional'];
+
+            $param['string'] = ($param[1] == 'string');
+
+            return $param;
+        }
+
 
     /**
      * Exec - run bash command
@@ -223,6 +390,24 @@ class Console_Abstract
     }
 
     /**
+     * Output 3 Columns - for help for example
+     */
+    public function output3col($col1, $col2=null, $col3=null, $line_ending=true, $stamp_lines=null)
+    {
+        $string = str_pad($col1, static::PAD_COL1, " ");
+        if (!is_null($col2))
+        {
+            $string.= "| " . $col2;
+        }
+        if (!is_null($col3))
+        {
+            $string = str_pad($string, static::PAD_COL2, " ") . "| " . $col3;
+        }
+        $string = str_pad("| $string", static::PAD_FULL-1) . "|";
+        $this->output($string);
+    }
+
+    /**
      * Output break
      */
     public function br()
@@ -242,19 +427,19 @@ class Console_Abstract
     /**
      * Output horizonal line - divider
      */
-    public function hr($c='=')
+    public function hr($c='=', $prefix="")
     {
-        $string = str_pad("", 60, $c);
+        $string = str_pad($prefix, static::PAD_FULL, $c);
         $this->output($string);
     }
     /**
      * hr, but only if logging is on
      */
-    public function hrl($c='=')
+    public function hrl($c='=', $prefix="")
     {
         if (!$this->verbose) return;
 
-        $this->hr($c);
+        $this->hr($c, $prefix);
     }
 
 
@@ -524,6 +709,21 @@ class Console_Abstract
         }
     }
 
+    /**
+     * Get parameters for a given method
+     */
+    protected function _getMethodParams($method)
+    {
+        $r = new ReflectionObject($this);
+        $rm = $r->getMethod($method);
+        $params = [];
+        foreach ($rm->getParameters() as $param)
+        {
+            $params[]=$param->name;
+        }
+        return $params;
+    }
+
     // Manage Properties
     protected $_public_properties = null;
     public function getPublicProperties()
@@ -560,5 +760,6 @@ class Console_Abstract
             fclose($this->_cli_input_handle);
         }
     }
+
 }
 ?>

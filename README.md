@@ -50,36 +50,40 @@ Quick getting started information for the most common use case.
 
         pssh sync
 
-# Usage
+# USAGE:
 
-    USAGE:
-        pssh <method> (argument1) (argument2) ... [options]
+    pssh <method> (argument1) (argument2) ... [options]
 
-    METHODS (ARGUMENTS):
-        add ( target hostname user alias port )
-        backup ( files )
-        clean ( paths )
-        export ( sources target )
-        import ( target source )
-        init_host ( alias key cli )
-        merge ( source_path target_path override_path )
-        sync ( )
-        help ( )
+    ----------------------------------------------------------------------------------------------------
+    | METHOD                   | INFO                                                                  |
+    ----------------------------------------------------------------------------------------------------
+    | add                      | Add new SSH host - interactive, or specify options                    |
+    | backup                   | Backup a file or files to the pssh backup folder                      |
+    | clean                    | Clean json config files                                               |
+    | export                   | Export JSON config to SSH config file                                 |
+    | import                   | Import SSH config data into JSON                                      |
+    | init_host                | Initialize host - interactive, or specify options                     |
+    | merge                    | Merge config from one JSON file into another                          |
+    | search                   | Search for host configuration                                         |
+    | sync                     | Sync config files based on 'sync' config/option value                 |
+    | help                     | Shows help/usage information.                                         |
+    ----------------------------------------------------------------------------------------------------
+    To get more help for a specific method:  pssh help <method>
 
-    OPTIONS:
-        --json_config_paths
-        --json_import_path
-        --ssh_config_path
-        --cli_script
-        --sync
-        --backup_dir
-        --verbose
-        --stamp_lines
-        --step
-
-    Note: for true/false options, prefix no- to set to fales. For example:
-
-        pssh export --no-sync
+    ----------------------------------------------------------------------------------------------------
+    | OPTION                   | TYPE         | INFO                                                   |
+    ----------------------------------------------------------------------------------------------------
+    | --json-config-paths      | (string)     | Main JSON config file paths                            |
+    | --json-import-path       | (string)     | Default JSON config import path                        |
+    | --ssh-config-path        | (string)     | Default SSH config path                                |
+    | --cli-script             | (string)     | CLI script to install on hosts during init             |
+    | --sync                   | (string)     | Git SSH URL to sync config data                        |
+    | --backup-dir             | (string)     | Default backup directory                               |
+    | --stamp-lines            | (boolean)    | Stamp output lines                                     |
+    | --step                   | (boolean)    | Enable stepping points                                 |
+    | --verbose                | (boolean)    | Enable verbose output                                  |
+    ----------------------------------------------------------------------------------------------------
+    Use no- to set boolean option to false - eg. --no-stamp-lines
 
 # Config File
 Options can be set in config. Options in config will be overridden by those passed by flags.
@@ -87,14 +91,14 @@ Options can be set in config. Options in config will be overridden by those pass
 **Sample:**
 
     {
-        "backup_dir": "~/.pssh/backups",
-        "cli_script": "~/.pssh/ssh_cli.sh",
+        "backup_dir": "/home/user/.pssh/backups",
+        "cli_script": "/home/user/.pssh/ssh_cli.sh",
         "json_config_paths": [
-            "~/.pssh/ssh_config_work.json",
-            "~/.pssh/ssh_config_personal.json"
+            "/home/user/.pssh/ssh_config_work.json",
+            "/home/user/.pssh/ssh_config_personal.json"
         ],
-        "json_import_path": "~/.pssh/ssh_config_imported.json",
-        "ssh_config_path": "~/.ssh/config",
+        "json_import_path": "/home/user/.pssh/ssh_config_imported.json",
+        "ssh_config_path": "/home/user/.ssh/config",
         "stamp_lines": false,
         "step": false,
         "sync": "git@...",
@@ -107,3 +111,4 @@ Many thanks to all who've helped with suggestions, testing, and motivation!
 - [Theodore Slechta](https://github.com/theodoreslechta)
 - Mark Johnson
 - Paul Cohen
+- Everyone who takes the time to use and test this!

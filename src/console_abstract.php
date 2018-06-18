@@ -15,18 +15,18 @@ error_reporting(E_ALL);
 class Console_Abstract
 {
     /**
+     * Padding for output
+     */
+    const PAD_FULL = 100;
+    const PAD_COL1 = 25;
+    const PAD_COL2 = 40;
+
+    /**
      * Callable Methods
      */
     protected static $METHODS = [
         'help',
     ];
-
-    /**
-     * Padding for output
-     */
-    protected const PAD_FULL = 100;
-    protected const PAD_COL1 = 25;
-    protected const PAD_COL2 = 40;
 
 	/**
 	 * Config/option defaults
@@ -707,6 +707,23 @@ class Console_Abstract
         {
             $this->output("NOTICE: invalid config key - $key");
         }
+    }
+
+    // Get basic curl
+    public function getCurl($url)
+    {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_HEADER => false,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => true,
+            CURLOPT_CONNECTTIMEOUT => 0,
+            CURLOPT_TIMEOUT => 180,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        
+        return $ch;
     }
 
     /**

@@ -4,7 +4,10 @@
  */
 class PSSH extends Console_Abstract
 {
-    public const VERSION = 1;
+    const VERSION = 1;
+
+    // Name of script and directory to store config
+    const SHORTNAME = 'pssh';
 
     /**
      * Callable Methods
@@ -20,9 +23,6 @@ class PSSH extends Console_Abstract
         'search',
         'sync',
     ];
-
-    // Name of script and directory to store config
-    protected const SHORTNAME = 'pssh';
 
     // Config Variables
     protected $__json_config_paths = ["Main JSON config file paths", "string"];
@@ -363,8 +363,7 @@ class PSSH extends Console_Abstract
     }
 
     /**
-     * 
-     *  - currently supports private git repository
+     * Currently only supports private git repository
      */
     protected $___sync = "Sync config files based on 'sync' config/option value";
     public function sync()

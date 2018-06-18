@@ -9,7 +9,7 @@ class PSSH extends Console_Abstract
     /**
      * Callable Methods
      */
-    protected const METHODS = [
+    protected static $METHODS = [
         'add',
         'backup',
         'clean',

@@ -17,7 +17,7 @@ class Console_Abstract
     /**
      * Callable Methods
      */
-    protected const METHODS = [
+    protected static $METHODS = [
         'help',
     ];
 
@@ -76,7 +76,7 @@ class Console_Abstract
         {
             $instance->initConfig();
 
-            $valid_methods = array_merge($class::METHODS, self::METHODS);
+            $valid_methods = array_merge($class::$METHODS, self::$METHODS);
             if (!in_array($method, $valid_methods))
             {
                 $instance->help();
@@ -128,7 +128,7 @@ class Console_Abstract
         // Specific help?
         if ($specific) return $this->_help_specific($specific);
 
-        $methods = array_merge(static::METHODS, self::METHODS);
+        $methods = array_merge(static::$METHODS, self::$METHODS);
 
         $this->output("USAGE:\n");
         $this->output(static::SHORTNAME." <method> (argument1) (argument2) ... [options]\n");

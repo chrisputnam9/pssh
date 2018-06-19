@@ -40,6 +40,9 @@ class Console_Abstract
     protected $__verbose = "Enable verbose output";
 	public $verbose = false;
 
+    protected $__timezone = ["Timezone - from http://php.net/manual/en/timezones.", "string"];
+    public $timezone = "US/Eastern";
+
     /**
      * Config paths
      */
@@ -57,6 +60,7 @@ class Console_Abstract
      */
     public function __construct()
     {
+        date_default_timezone_set($this->timezone);
         $this->run_stamp = $this->stamp();
     }
 
@@ -104,6 +108,8 @@ class Console_Abstract
                     $args[]= $_arg;
                 }
             }
+
+            date_default_timezone_set($instance->timezone);
 
             $call_info = "$class->$method(" . implode(",", $args) . ")";
             $instance->log("Calling $call_info");

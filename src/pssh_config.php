@@ -9,8 +9,9 @@ class PSSH_Config
 	/**
 	 * Map of keys to preferred case
 	 */
-	public const KEY_CASE_MAP = [
+	public static $KEY_CASE_MAP = [
         'host' => 'Host',// just to stop error
+		'hostkexalgorithms' => 'HostKexAlgorithms',
 		'hostname' => 'HostName',
 		'identitiesonly' => 'IdentitiesOnly',
 		'identityfile' => 'IdentityFile',
@@ -18,6 +19,7 @@ class PSSH_Config
 		'loglevel' => 'LogLevel',
 		'passwordauthentication' => 'PasswordAuthentication',
 		'port' => 'Port',
+        'serveraliveinterval' => 'ServerAliveInterval',
 		'stricthostkeychecking' => 'StrictHostKeyChecking',
 		'user' => 'User',
 		'userknownhostsfile' => 'UserKnownHostsFile',
@@ -431,7 +433,7 @@ class PSSH_Config
 				$key = strtolower($match[1]);
 				$value = trim($match[2]);
 
-                if (!isset(self::KEY_CASE_MAP[$key]))
+                if (!isset(self::$KEY_CASE_MAP[$key]))
                 {
                     $original_keys[$key]= $match[1];
                 }
@@ -471,7 +473,7 @@ class PSSH_Config
         {
             $original_keys = array_unique($original_keys);
             sort($original_keys);
-            $this->warn('New Keys Present - make sure these get added to PSSH_Config::KEY_CASE_MAP');
+            $this->warn('New Keys Present - make sure these get added to PSSH_Config::$KEY_CASE_MAP');
             $this->output($original_keys);
         }
 
@@ -603,7 +605,7 @@ class PSSH_Config
         foreach ($this->data['ssh'] as $key => $value)
         {
             // $this->log(" - $key: $value");
-            $Key = isset(self::KEY_CASE_MAP[$key]) ? self::KEY_CASE_MAP[$key] : ucwords($key);
+            $Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
             fwrite($path_handle, $Key . ' ' . $value . "\n");
         }
 
@@ -639,7 +641,7 @@ class PSSH_Config
         $output.='Host ' . $host['pssh']['alias'] . "\n";
         foreach ($host['ssh'] as $key => $value)
         {
-            $Key = isset(self::KEY_CASE_MAP[$key]) ? self::KEY_CASE_MAP[$key] : ucwords($key);
+            $Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
             $output.= '    ' . $Key . ' ' . $value . "\n";
         }
         return $output;

@@ -43,6 +43,9 @@ class PSSH extends Console_Abstract
     protected $__backup_dir = ["Default backup directory", "string"];
     public $backup_dir = null;
 
+    protected $__backup_age_limit = ["Age limit of backups to keep- number of days", "string"];
+    public $backup_age_limit = '30';
+
     protected $___add = [
         "Add new SSH host - interactive, or specify options",
         ["JSON file to add host to", "string"],
@@ -191,6 +194,12 @@ class PSSH extends Console_Abstract
         }
         
         if (!$success) $this->error('Unable to back up one or more files');
+
+        // Clean up old backups - keep backup_age_limit days worth
+        if ($success)
+        {
+            $this->exec("find \"{$this->backup_dir}\" -mtime +{$this->backup_age_limit} -type f -delete");
+        }
         
         return $success;
     }

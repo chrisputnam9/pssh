@@ -633,9 +633,6 @@ class Console_Abstract
                 }
             }
 
-            print_r($this);
-            die;
-
             // Rewrite config - pretty print
             ksort($config);
             $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

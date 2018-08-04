@@ -633,6 +633,9 @@ class Console_Abstract
                 }
             }
 
+            print_r($this);
+            die;
+
             // Rewrite config - pretty print
             ksort($config);
             $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -707,6 +710,9 @@ class Console_Abstract
         $public_properties = $this->getPublicProperties();
         if (in_array($key, $public_properties))
         {
+
+            $value = preg_replace('/^\~/', $_SERVER['HOME'], $value);
+
             $this->{$key} = $value;
         }
         else

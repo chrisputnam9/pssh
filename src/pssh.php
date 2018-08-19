@@ -158,7 +158,7 @@ class PSSH extends Console_Abstract
         $this->sync();
 
         // Initialize Host (prompt - key, cli)
-        $this->init_host($alias);
+        $this->init_host($alias, null, null, $target, null);
 
         $this->hr();
         $this->output('Done!');
@@ -268,20 +268,72 @@ class PSSH extends Console_Abstract
     protected $___init_host = [
         "Initialize host - interactive, or specify options",
         ["Alias of host", "string", "required"],
-        ["Whether to copy your ssh key to the server", "boolean"],
-        ["Whether to set up server CLI using cli_script", "boolean"],
+        ["Copy your SSH key to the server", "boolean"],
+        ["Copy all team SSH keys to the server - if set", "boolean"],
+        ["JSON file for team key data", "string"],
+        ["Set up server CLI using cli_script", "boolean"],
     ];
-    public function init_host($alias, $key=null, $cli=null) {
+    public function init_host($alias, $copy_key=null, $copy_team_keys=null, $team_config=null, $cli=null) {
 
         // Copy Key?
-        if (is_null($key))
+        if (is_null($copy_key))
         {
-            $key = $this->confirm('Copy Key?');
+            $copy_key = $this->confirm('Copy Key?');
         }
-        if ($key)
+        if ($copy_key or $copy_team_keys)
         {
+            if (is_null($copy_team_keys))
+            {
+                $copy_team_keys = $this->confirm('Copy all team keys?', 'n');
+            }
+
+            if ($copy_team_keys)
+            {
+                $config = new PSSH_Config($this);
+                if (is_null($team_config))
+                {
+                    $team_config = $this->select($this->json_config_paths, 'Config for team keys');
+                }
+                $config->readJson($team_config);
+
+                $identifier = $config->getTeamKeysIdentifier();
+                $team_keys = $config->getTeamKeys();
+                if (empty($team_keys))
+                {
+                    $this->warn('No team key config found, copying your key instead');
+                }
+            }
+
             $this->output('Enter ssh password for this host if prompted');
-            $this->exec("ssh-copy-id $alias");
+
+            if ($copy_team_keys)
+            {
+                $config = <<<____KEYS____
+# ----------------------------------
+# BEGIN - {$identifier}
+
+____KEYS____;
+                foreach ($team_keys as $team => $users)
+                {
+                    foreach ($users as $name => $user)
+                    {
+                        foreach ($user['keys'] as $key)
+                        {
+                            $config.=$key['key'] . "\n";
+                        }
+                    }
+                }
+
+                $config.= <<<____KEYS____
+# END - {$identifier}
+# ----------------------------------
+____KEYS____;
+                $this->exec("ssh $alias 'echo \"".$config."\" >> ~/.ssh/authorized_keys'");
+            }
+            else
+            {
+                $this->exec("ssh-copy-id $alias");
+            }
         }
 
         // Set up Custom CLI Tools?

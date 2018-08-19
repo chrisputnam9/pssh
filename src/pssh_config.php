@@ -27,6 +27,9 @@ class PSSH_Config
 
     protected $data = null;
 
+    protected $team_keys = null;
+    protected $team_keys_identifier = null;
+
     protected $shell = null;
 
     protected $hosts_by_hostname = null;
@@ -291,6 +294,44 @@ class PSSH_Config
         }
 
         return empty($this->hosts_by_hostname[$hostname]) ? [] : $this->hosts_by_hostname[$hostname];
+    }
+
+    /**
+     * Get team keys
+     */
+    public function getTeamKeys()
+    {
+        if (is_null($this->team_keys))
+        {
+            $this->team_keys = array();
+            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys']))
+            {
+                $raw = file_get_contents($this->data['pssh']['team_keys']);
+
+                $data = json_decode($raw, true);
+                if ($data)
+                {
+                    $this->team_keys = $data;
+                }
+            }
+        }
+        return $this->team_keys;
+    }
+
+    /**
+     * Get team keys identifier
+     */
+    public function getTeamKeysIdentifier()
+    {
+        if (is_null($this->team_keys_identifier))
+        {
+            $this->team_keys_identifier = 'team keys';
+            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys_identifier']))
+            {
+                $this->team_keys_identifier = $this->data['pssh']['team_keys_identifier'];
+            }
+        }
+        return $this->team_keys_identifier;
     }
 
     /**

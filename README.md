@@ -110,5 +110,6 @@ Many thanks to all who've helped with suggestions, testing, and motivation!
 
 - [Theodore Slechta](https://github.com/theodoreslechta)
 - Mark Johnson
-- Paul Cohen
+- [Paul Cohen](https://github.com/pcohen12)
+- Josh Quenga
 - Everyone who takes the time to use and test this!

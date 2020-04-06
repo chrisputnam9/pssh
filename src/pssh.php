@@ -4,7 +4,7 @@
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = 1;
+    const VERSION = 2;
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -14,7 +14,6 @@ class PSSH extends Console_Abstract
      */
     protected static $METHODS = [
         'add',
-        'backup',
         'clean',
         'export',
         'import',
@@ -39,12 +38,6 @@ class PSSH extends Console_Abstract
 
     protected $__sync = ["Git SSH URL to sync config data", "string"];
     public $sync = '';
-
-    protected $__backup_dir = ["Default backup directory", "string"];
-    public $backup_dir = null;
-
-    protected $__backup_age_limit = ["Age limit of backups to keep- number of days", "string"];
-    public $backup_age_limit = '30';
 
     protected $___add = [
         "Add new SSH host - interactive, or specify options",
@@ -162,46 +155,6 @@ class PSSH extends Console_Abstract
 
         $this->hr();
         $this->output('Done!');
-    }
-
-    protected $___backup = [
-        "Backup a file or files to the pssh backup folder",
-        ["Paths to back up", "string", "required"],
-    ];
-    public function backup($files)
-    {
-        $success = true;
-
-        $files = $this->prepArg($files, []);
-
-        if (!is_dir($this->backup_dir))
-            mkdir($this->backup_dir, 0755, true);
-
-        foreach ($files as $file)
-        {
-            // $this->log("Backing up $file...");
-            if (!is_file($file))
-            {
-                // $this->log(" - Does not exist - skipping");
-                continue;
-            }
-
-            $backup_file = $this->backup_dir . DS . basename($file) . '-' . $this->stamp() . '.bak';
-            // $this->log(" - copying to $backup_file");
-
-            // Back up target
-            $success = ($success and copy($file, $backup_file));
-        }
-        
-        if (!$success) $this->error('Unable to back up one or more files');
-
-        // Clean up old backups - keep backup_age_limit days worth
-        if ($success)
-        {
-            $this->exec("find \"{$this->backup_dir}\" -mtime +{$this->backup_age_limit} -type f -delete");
-        }
-        
-        return $success;
     }
 
     protected $___clean = [
@@ -498,8 +451,6 @@ GITGNORE;
         {
             $this->cli_script = $cli_script;
         }
-
-        $this->backup_dir = $config_dir . DS . 'backups';
 
         parent::initConfig();
     }

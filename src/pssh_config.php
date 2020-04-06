@@ -126,12 +126,11 @@ class PSSH_Config
     {
         $init = $this->initData();
 
-        if (empty($this->data['ssh']['identityfile']))
+		if (!empty($this->data['ssh']))
         {
-            $this->data['ssh']['identityfile'] = 'id_rsa';
+            ksort($this->data['ssh']);
         }
 
-        ksort($this->data['ssh']);
         ksort($this->data['hosts']);
 
         $final_map = [];
@@ -643,11 +642,14 @@ class PSSH_Config
         fwrite($path_handle, "# ---------------------------------------\n");
         fwrite($path_handle, "# General Config\n");
         fwrite($path_handle, "# ---------------------------------------\n");
-        foreach ($this->data['ssh'] as $key => $value)
+        if (!empty($this->data['ssh']))
         {
-            // $this->log(" - $key: $value");
-            $Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
-            fwrite($path_handle, $Key . ' ' . $value . "\n");
+			foreach ($this->data['ssh'] as $key => $value)
+			{
+				// $this->log(" - $key: $value");
+				$Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
+				fwrite($path_handle, $Key . ' ' . $value . "\n");
+			}
         }
 
         // $this->log("Outputting Hosts Config");

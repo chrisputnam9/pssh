@@ -328,7 +328,7 @@ ____KEYS____;
 # END - {$identifier}
 # ----------------------------------
 ____KEYS____;
-                $this->exec("ssh $alias 'echo \"".$config."\" >> ~/.ssh/authorized_keys'");
+                $this->exec("ssh $alias 'mkdir -p ~/.ssh && echo \"".$config."\" >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'");
             }
             else
             {

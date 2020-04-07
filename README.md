@@ -12,15 +12,15 @@ Latest Version Hash (md5):
 ## Install PSSH
 1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php
 
-2. Download the latest version using the URL above
+2. Run this code in a download folder or temporary location:
 
-3. Make the file executable
-
+        curl https://raw.githubusercontent.com/chrisputnam9/pssh/v2.0/dist/pssh > pssh
         chmod +x pssh
+        sudo ./pssh install
 
-4. Run the install method
+3. Test success by running in a new terminal session:
 
-        ./pssh install
+        pssh version
 
 ## Import Existing Config
 1. Import your current config to a new JSON file (~/.pssh/ssh\_config\_imported.json)

@@ -2,22 +2,25 @@
 
 Quick getting started information for the most common use case.
 
+## Latest Version
+Download Latest Version (2.0):
+https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
+
+Latest Version Hash (md5):
+7466704a24e8739b53dc9d70bf48b564
+
 ## Install PSSH
 1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php
 
-2. Clone the pssh repository to the location of your choice
+2. Download the latest version using the URL above
 
-        cd /opt
-        git clone https://github.com/chrisputnam9/pssh.git
+3. Make the file executable
 
-3. Move/symlink into path, add pssh directory into path, or set up alias
+        chmod +x pssh
 
-        ln -s /opt/pssh/pssh /usr/local/bin/pssh
+4. Run the install method
 
-4. Re-pull as needed to update
-
-        cd /opt/pssh
-        git pull origin master
+        ./pssh install
 
 ## Import Existing Config
 1. Import your current config to a new JSON file (~/.pssh/ssh\_config\_imported.json)

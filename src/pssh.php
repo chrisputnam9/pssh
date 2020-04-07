@@ -23,6 +23,13 @@ class PSSH extends Console_Abstract
         'sync',
     ];
 
+    protected static $HIDDEN_CONFIG_OPTIONS = [
+        'json_config_paths',
+        'json_import_path',
+        'ssh_config_path',
+        'sync',
+    ];
+
     // Config Variables
     protected $__json_config_paths = ["Main JSON config file paths", "string"];
     public $json_config_paths = [];
@@ -38,6 +45,8 @@ class PSSH extends Console_Abstract
 
     protected $__sync = ["Git SSH URL to sync config data", "string"];
     public $sync = '';
+
+	public $update_version_url = "https://raw.githubusercontent.com/chrisputnam9/pssh/master/README.md";
 
     protected $___add = [
         "Add new SSH host - interactive, or specify options",

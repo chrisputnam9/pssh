@@ -4,7 +4,7 @@ Quick getting started information for the most common use case.
 
 ## Latest Version
 Download Latest Version (2.0):
-https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
+https://raw.githubusercontent.com/chrisputnam9/pssh/v2.0/dist/pssh
 
 Latest Version Hash (md5):
 7466704a24e8739b53dc9d70bf48b564

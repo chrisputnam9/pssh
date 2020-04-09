@@ -10,7 +10,7 @@ Latest Version Hash (md5):
 7466704a24e8739b53dc9d70bf48b564
 
 ## Install PSSH
-1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php
+1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php)
 
 2. Run this code in a download folder or temporary location:
 

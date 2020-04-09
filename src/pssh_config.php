@@ -11,6 +11,7 @@ class PSSH_Config
 	 */
 	public static $KEY_CASE_MAP = [
         'host' => 'Host',// just to stop error
+        'hostkeyalgorithms' => 'HostKeyAlgorithms',
 		'hostkexalgorithms' => 'HostKexAlgorithms',
 		'hostname' => 'HostName',
 		'identitiesonly' => 'IdentitiesOnly',

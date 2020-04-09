@@ -31,7 +31,7 @@ class PSSH extends Console_Abstract
     ];
 
     // Config Variables
-    protected $__json_config_paths = ["Main JSON config file paths", "string"];
+    protected $__json_config_paths = ["Main JSON config file paths - first one will be synced by default, others will be ignored by default", "string"];
     public $json_config_paths = [];
 
     protected $__json_import_path = ["Default JSON config import path", "string"];
@@ -188,6 +188,8 @@ class PSSH extends Console_Abstract
             $config->clean();
             $config->writeJSON($path);
         }
+
+        $this->output('Clean complete');
     }
 
     protected $___export = [
@@ -206,6 +208,8 @@ class PSSH extends Console_Abstract
         $config->readJSON($sources);
         $config->clean();
         $config->writeSSH($target);
+
+        $this->output('Export complete');
     }
 
     protected $___import = [
@@ -219,12 +223,17 @@ class PSSH extends Console_Abstract
         $target = $this->prepArg($target, $this->json_import_path);
         $source = $this->prepArg($source, $this->ssh_config_path);
 
-        $this->backup($target);
+        if (is_file($target))
+        {
+            $this->backup($target);
+        }
 
         $config = new PSSH_Config($this);
         $config->readSSH($source);
         $config->clean();
         $config->writeJSON($target);
+
+        $this->output('Import complete - see json in ' . $target);
 	}
 
     protected $___init_host = [
@@ -419,7 +428,7 @@ ____KEYS____;
                 // $this->log('Setting up default ignore file');
                 $synced_config_json = empty($this->json_config_paths)
                     ? ''
-                    : '!' . array_unshift($this->json_config_paths);
+                    : '!' . str_replace($this->config_dir, "", array_shift($this->json_config_paths));
                 $ignore = <<<GITGNORE
 *
 !.gitignore

@@ -13,6 +13,7 @@ if (!defined('CONSOLE_ABSTRACT_PATH')) define('CONSOLE_ABSTRACT_PATH', '/home/ch
 
 # Paths to other includes
 $src_includes = array(
+    __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'config_keys.php',
     __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'pssh_config.php',
     __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'pssh.php',
 );

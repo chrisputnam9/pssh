@@ -9,21 +9,7 @@ class PSSH_Config
 	/**
 	 * Map of keys to preferred case
 	 */
-	public static $KEY_CASE_MAP = [
-        'host' => 'Host',// just to stop error
-        'hostkeyalgorithms' => 'HostKeyAlgorithms',
-		'hostname' => 'HostName',
-		'identitiesonly' => 'IdentitiesOnly',
-		'identityfile' => 'IdentityFile',
-		'kexalgorithms' => 'KexAlgorithms',
-		'loglevel' => 'LogLevel',
-		'passwordauthentication' => 'PasswordAuthentication',
-		'port' => 'Port',
-        'serveraliveinterval' => 'ServerAliveInterval',
-		'stricthostkeychecking' => 'StrictHostKeyChecking',
-		'user' => 'User',
-		'userknownhostsfile' => 'UserKnownHostsFile',
-	];
+	public static $CONFIG_KEYS = null;
 
     protected $data = null;
 
@@ -473,7 +459,7 @@ class PSSH_Config
 				$key = strtolower($match[1]);
 				$value = trim($match[2]);
 
-                if (!isset(self::$KEY_CASE_MAP[$key]))
+                if (!isset(self::$CONFIG_KEYS[$key]))
                 {
                     $original_keys[$key]= $match[1];
                 }
@@ -508,12 +494,12 @@ class PSSH_Config
 			}
 		}
 
-        // Warn about any new keys our mapping didn't have
+        // Warn about any unknown keys our mapping didn't have
         if (!empty($original_keys))
         {
             $original_keys = array_unique($original_keys);
             sort($original_keys);
-            $this->warn('New Keys Present - make sure these get added to PSSH_Config::$KEY_CASE_MAP');
+            $this->warn('Unknwon Config Key(s) Present - if these are valid, the PSSH code should be updated to know about them.');
             $this->output($original_keys);
         }
 
@@ -647,7 +633,7 @@ class PSSH_Config
 			foreach ($this->data['ssh'] as $key => $value)
 			{
 				// $this->log(" - $key: $value");
-				$Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
+				$Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
 				fwrite($path_handle, $Key . ' ' . $value . "\n");
 			}
         }
@@ -684,7 +670,7 @@ class PSSH_Config
         $output.='Host ' . $host['pssh']['alias'] . "\n";
         foreach ($host['ssh'] as $key => $value)
         {
-            $Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
+            $Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
             $output.= '    ' . $Key . ' ' . $value . "\n";
         }
         return $output;
@@ -804,4 +790,5 @@ class PSSH_Config
     }
 
 }
+PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
 ?>

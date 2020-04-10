@@ -330,6 +330,7 @@ ____KEYS____;
         $this->backup($target_path);
         $this->backup($override_path);
 
+        $this->output("Merging config...");
         $source = new PSSH_Config($this);
         $source->readJSON($source_path);
 
@@ -346,6 +347,8 @@ ____KEYS____;
 
         $override->clean();
         $override->writeJSON($override_path);
+
+        $this->output("Merge complete");
     }
 
     protected $___search = [

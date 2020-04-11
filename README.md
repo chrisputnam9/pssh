@@ -7,7 +7,7 @@ Quick getting started information for the most common use case.
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
 ### Latest Version Hash (md5):
-4a26dfff3a606f23224a0db516d9b0b9
+36d217742666b975b18b29b08c2a46e4
 
 ## Install PSSH
 1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php)

@@ -676,7 +676,7 @@ class Console_Abstract
             if (!$success) $this->error("Failed to delete existing temp file ($temp_path) - may need higher privileges (eg. sudo)");
         }
 
-        $curl = $this->getCurl($this->update_url);
+        $curl = $this->getCurl($this->update_url, true);
         $updated_contents = curl_exec($curl);
         if (empty($updated_contents)) $this->error("Download failed - no contents at " . $this->update_url);
 
@@ -771,7 +771,7 @@ class Console_Abstract
             }
 
             // curl, get contents at config url
-            $curl = $this->getCurl($this->update_version_url);
+            $curl = $this->getCurl($this->update_version_url, true);
             $update_contents = curl_exec($curl);
 
             // look for version match
@@ -1467,7 +1467,7 @@ class Console_Abstract
     }
 
     // Get basic curl
-    public function getCurl($url)
+    public function getCurl($url, $fresh_no_cache=false)
     {
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -1478,6 +1478,11 @@ class Console_Abstract
             CURLOPT_TIMEOUT => 180,
             CURLOPT_FOLLOWLOCATION => true,
         ]);
+
+        if ($fresh_no_cache)
+        {
+            curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+        }
         
         return $ch;
     }

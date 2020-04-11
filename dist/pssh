@@ -2399,7 +2399,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = 2;
+    const VERSION = "2.0.0";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

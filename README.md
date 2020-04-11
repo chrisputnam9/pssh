@@ -3,18 +3,18 @@
 Quick getting started information for the most common use case.
 
 ## Latest Version
-Download Latest Version (2.0):
-https://raw.githubusercontent.com/chrisputnam9/pssh/v2.0/dist/pssh
+### Download Latest Version (2.0):
+https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
-Latest Version Hash (md5):
-7466704a24e8739b53dc9d70bf48b564
+### Latest Version Hash (md5):
+8c51afa6825d126bd438ad9c3801a87c
 
 ## Install PSSH
 1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php)
 
 2. Run this code in a download folder or temporary location:
 
-        curl https://raw.githubusercontent.com/chrisputnam9/pssh/v2.0/dist/pssh > pssh
+        curl https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh > pssh
         chmod +x pssh
         sudo ./pssh install
 
@@ -57,56 +57,49 @@ Latest Version Hash (md5):
 
     pssh <method> (argument1) (argument2) ... [options]
 
-    ----------------------------------------------------------------------------------------------------
-    | METHOD                   | INFO                                                                  |
-    ----------------------------------------------------------------------------------------------------
-    | add                      | Add new SSH host - interactive, or specify options                    |
-    | backup                   | Backup a file or files to the pssh backup folder                      |
-    | clean                    | Clean json config files                                               |
-    | export                   | Export JSON config to SSH config file                                 |
-    | import                   | Import SSH config data into JSON                                      |
-    | init_host                | Initialize host - interactive, or specify options                     |
-    | merge                    | Merge config from one JSON file into another                          |
-    | search                   | Search for host configuration                                         |
-    | sync                     | Sync config files based on 'sync' config/option value                 |
-    | help                     | Shows help/usage information.                                         |
-    ----------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------------------------
+    | METHOD                        | INFO                                                                                           |
+    ----------------------------------------------------------------------------------------------------------------------------------
+    | add                           | Add new SSH host - interactive, or specify options                                             |
+    | backup                        | Backup a file or files to the configured backup folder                                         |
+    | clean                         | Clean json config files                                                                        |
+    | eval_file                     | Evaluate a php script file, which will have access to all internal methods via '$this'         |
+    | export                        | Export JSON config to SSH config file                                                          |
+    | help                          | Shows help/usage information.                                                                  |
+    | import                        | Import SSH config data into JSON                                                               |
+    | init_host                     | Initialize host - interactive, or specify options                                              |
+    | install                       | Install a packaged PHP console tool                                                            |
+    | merge                         | Merge config from one JSON file into another                                                   |
+    | search                        | Search for host configuration                                                                  |
+    | sync                          | Sync config files based on 'sync' config/option value                                          |
+    | update                        | Update an installed PHP console tool                                                           |
+    | version                       | Output version information                                                                     |
+    ----------------------------------------------------------------------------------------------------------------------------------
     To get more help for a specific method:  pssh help <method>
 
-    ----------------------------------------------------------------------------------------------------
-    | OPTION                   | TYPE         | INFO                                                   |
-    ----------------------------------------------------------------------------------------------------
-    | --json-config-paths      | (string)     | Main JSON config file paths                            |
-    | --json-import-path       | (string)     | Default JSON config import path                        |
-    | --ssh-config-path        | (string)     | Default SSH config path                                |
-    | --cli-script             | (string)     | CLI script to install on hosts during init             |
-    | --sync                   | (string)     | Git SSH URL to sync config data                        |
-    | --backup-dir             | (string)     | Default backup directory                               |
-    | --stamp-lines            | (boolean)    | Stamp output lines                                     |
-    | --step                   | (boolean)    | Enable stepping points                                 |
-    | --verbose                | (boolean)    | Enable verbose output                                  |
-    ----------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------------------------
+    | OPTION                        | TYPE              | INFO                                                                       |
+    ----------------------------------------------------------------------------------------------------------------------------------
+    | --allow-root                  | (boolean)         | OK to run as root                                                          |
+    | --backup-age-limit            | (string)          | Age limit of backups to keep- number of days                               |
+    | --backup-dir                  | (string)          | Location to save backups                                                   |
+    | --cli-script                  | (string)          | CLI script to install on hosts during init                                 |
+    | --install-path                | (string)          | Install path of this tool                                                  |
+    | --json-config-paths           | (string)          | Main JSON config file paths - first one will be synced by default, others will be ignored by default|
+    | --json-import-path            | (string)          | Default JSON config import path                                            |
+    | --ssh-config-path             | (string)          | Default SSH config path                                                    |
+    | --stamp-lines                 | (boolean)         | Stamp output lines                                                         |
+    | --step                        | (boolean)         | Enable stepping points                                                     |
+    | --sync                        | (string)          | Git SSH URL to sync config data                                            |
+    | --timezone                    | (string)          | Timezone - from http://php.net/manual/en/timezones.                        |
+    | --update-auto                 | (int)             | How often to automatically check for an update (seconds, 0 to disable)     |
+    | --update-check-hash           | (binary)          | Whether to check hash of download when updating                            |
+    | --update-last-check           | (string)          | Formatted timestap of last update check                                    |
+    | --update-version-url          | (string)          | URL to check for latest version number info                                |
+    | --verbose                     | (boolean)         | Enable verbose output                                                      |
+    ----------------------------------------------------------------------------------------------------------------------------------
     Use no- to set boolean option to false - eg. --no-stamp-lines
-
-# Config File
-Options can be set in config. Options in config will be overridden by those passed by flags.
-
-**Sample:**
-
-    {
-        "backup_dir": "/home/user/.pssh/backups",
-        "cli_script": "/home/user/.pssh/ssh_cli.sh",
-        "json_config_paths": [
-            "/home/user/.pssh/ssh_config_work.json",
-            "/home/user/.pssh/ssh_config_personal.json"
-        ],
-        "json_import_path": "/home/user/.pssh/ssh_config_imported.json",
-        "ssh_config_path": "/home/user/.ssh/config",
-        "stamp_lines": false,
-        "step": false,
-        "sync": "git@...",
-        "verbose": false
-    }
+    ==================================================================================================================================
 
 # Miscellaneous
 Many thanks to all who've helped with suggestions, testing, and motivation!
@@ -115,4 +108,4 @@ Many thanks to all who've helped with suggestions, testing, and motivation!
 - Mark Johnson
 - [Paul Cohen](https://github.com/pcohen12)
 - Josh Quenga
-- Everyone who takes the time to use and test this!
+- Everyone else who takes the time to use and test this!

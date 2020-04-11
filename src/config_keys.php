@@ -91,3 +91,4 @@ $CONFIG_KEYS = [
 	"visualhostkey" => "VisualHostKey",
 	"xauthlocation" => "XAuthLocation",
 ];
+?>

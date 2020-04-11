@@ -315,6 +315,7 @@ class Console_Abstract
         if (empty($this->backup_dir))
         {
             $this->warn('Backups are disabled - no backup_dir specified in config', true);
+            return;
         }
 
         if (!is_dir($this->backup_dir))
@@ -322,11 +323,11 @@ class Console_Abstract
 
         foreach ($files as $file)
         {
-            $this->log("Backing up $file...");
+            $this->output("Backing up $file...", false);
             if (!is_file($file))
             {
+                $this->br();
                 $this->warn("$file does not exist - skipping", true);
-                $success = false;
                 continue;
             }
 
@@ -335,17 +336,20 @@ class Console_Abstract
 
             // Back up target
             $success = ($success and copy($file, $backup_file));
+            if ($success)
+            {
+                $this->output('successful');
+            }
+            else
+            {
+                $this->br();
+                $this->warn("Failed to back up $file", true);
+                continue;
+            }
         }
-        
-        if (!$success) $this->error('Unable to back up one or more files');
 
         // Clean up old backups - keep backup_age_limit days worth
-        if ($success)
-        {
-            $this->exec("find \"{$this->backup_dir}\" -mtime +{$this->backup_age_limit} -type f -delete");
-
-            if ($output or $verbose) $this->output('Backup successful');
-        }
+        $this->exec("find \"{$this->backup_dir}\" -mtime +{$this->backup_age_limit} -type f -delete");
         
         return $success;
     }
@@ -1502,6 +1506,100 @@ if (!empty($src_includes) and is_array($src_includes))
 
 // Note: leave this for packaging ?>
 <?php
+$CONFIG_KEYS = [
+	"addkeystoagent" => "AddKeysToAgent",
+	"addressfamily" => "AddressFamily",
+	"batchmode" => "BatchMode",
+	"bindaddress" => "BindAddress",
+	"canonicaldomains" => "CanonicalDomains",
+	"canonicalizefallbacklocal" => "CanonicalizeFallbackLocal",
+	"canonicalizehostname" => "CanonicalizeHostname",
+	"canonicalizemaxdots" => "CanonicalizeMaxDots",
+	"canonicalizepermittedcnames" => "CanonicalizePermittedCNAMEs",
+	"casignaturealgorithms" => "CASignatureAlgorithms",
+	"certificatefile" => "CertificateFile",
+	"challengeresponseauthentication" => "ChallengeResponseAuthentication",
+	"checkhostip" => "CheckHostIP",
+	"ciphers" => "Ciphers",
+	"clearallforwardings" => "ClearAllForwardings",
+	"compression" => "Compression",
+	"connectionattempts" => "ConnectionAttempts",
+	"connecttimeout" => "ConnectTimeout",
+	"controlmaster" => "ControlMaster",
+	"controlpath" => "ControlPath",
+	"controlpersist" => "ControlPersist",
+	"dynamicforward" => "DynamicForward",
+	"escapechar" => "EscapeChar",
+	"exitonforwardfailure" => "ExitOnForwardFailure",
+	"fingerprinthash" => "FingerprintHash",
+	"forwardagent" => "ForwardAgent",
+	"forwardx11" => "ForwardX11",
+	"forwardx11timeout" => "ForwardX11Timeout",
+	"forwardx11trusted" => "ForwardX11Trusted",
+	"gatewayports" => "GatewayPorts",
+	"globalknownhostsfile" => "GlobalKnownHostsFile",
+	"gssapiauthentication" => "GSSAPIAuthentication",
+	"gssapikeyexchange" => "GSSAPIKeyExchange",
+	"gssapiclientidentity" => "GSSAPIClientIdentity",
+	"gssapidelegatecredentials" => "GSSAPIDelegateCredentials",
+	"gssapikexalgorithms" => "GSSAPIKexAlgorithms",
+	"gssapirenewalforcesrekey" => "GSSAPIRenewalForcesRekey",
+	"gssapiserveridentity" => "GSSAPIServerIdentity",
+	"gssapitrustdns" => "GSSAPITrustDns",
+	"hashknownhosts" => "HashKnownHosts",
+	"host" => "Host",
+	"hostbasedauthentication" => "HostbasedAuthentication",
+	"hostbasedkeytypes" => "HostbasedKeyTypes",
+	"hostkeyalgorithms" => "HostKeyAlgorithms",
+	"hostkeyalias" => "HostKeyAlias",
+	"hostname" => "HostName",
+	"identitiesonly" => "IdentitiesOnly",
+	"identityagent" => "IdentityAgent",
+	"identityfile" => "IdentityFile",
+	"ipqos" => "IPQoS",
+	"kbdinteractiveauthentication" => "KbdInteractiveAuthentication",
+	"kbdinteractivedevices" => "KbdInteractiveDevices",
+	"kexalgorithms" => "KexAlgorithms",
+	"localcommand" => "LocalCommand",
+	"localforward" => "LocalForward",
+	"loglevel" => "LogLevel",
+	"macs" => "MACs",
+	"match" => "Match",
+	"nohostauthenticationforlocalhost" => "NoHostAuthenticationForLocalhost",
+	"numberofpasswordprompts" => "NumberOfPasswordPrompts",
+	"passwordauthentication" => "PasswordAuthentication",
+	"permitlocalcommand" => "PermitLocalCommand",
+	"pkcs11provider" => "PKCS11Provider",
+	"port" => "Port",
+	"preferredauthentications" => "PreferredAuthentications",
+	"proxycommand" => "ProxyCommand",
+	"proxyjump" => "ProxyJump",
+	"proxyusefdpass" => "ProxyUseFdpass",
+	"pubkeyacceptedkeytypes" => "PubkeyAcceptedKeyTypes",
+	"pubkeyauthentication" => "PubkeyAuthentication",
+	"rekeylimit" => "RekeyLimit",
+	"remotecommand" => "RemoteCommand",
+	"remoteforward" => "RemoteForward",
+	"requesttty" => "RequestTTY",
+	"sendenv" => "SendEnv",
+	"serveraliveinterval" => "ServerAliveInterval",
+	"serveralivecountmax" => "ServerAliveCountMax",
+	"setenv" => "SetEnv",
+	"streamlocalbindmask" => "StreamLocalBindMask",
+	"streamlocalbindunlink" => "StreamLocalBindUnlink",
+	"stricthostkeychecking" => "StrictHostKeyChecking",
+	"tcpkeepalive" => "TCPKeepAlive",
+	"tunnel" => "Tunnel",
+	"tunneldevice" => "TunnelDevice",
+	"updatehostkeys" => "UpdateHostKeys",
+	"user" => "User",
+	"userknownhostsfile" => "UserKnownHostsFile",
+	"verifyhostkeydns" => "VerifyHostKeyDNS",
+	"visualhostkey" => "VisualHostKey",
+	"xauthlocation" => "XAuthLocation",
+];
+?>
+<?php
 /**
  * PSSH Config Object
  *  - manage config data
@@ -1512,21 +1610,7 @@ class PSSH_Config
 	/**
 	 * Map of keys to preferred case
 	 */
-	public static $KEY_CASE_MAP = [
-        'host' => 'Host',// just to stop error
-		'hostkexalgorithms' => 'HostKexAlgorithms',
-		'hostname' => 'HostName',
-		'identitiesonly' => 'IdentitiesOnly',
-		'identityfile' => 'IdentityFile',
-		'kexalgorithms' => 'KexAlgorithms',
-		'loglevel' => 'LogLevel',
-		'passwordauthentication' => 'PasswordAuthentication',
-		'port' => 'Port',
-        'serveraliveinterval' => 'ServerAliveInterval',
-		'stricthostkeychecking' => 'StrictHostKeyChecking',
-		'user' => 'User',
-		'userknownhostsfile' => 'UserKnownHostsFile',
-	];
+	public static $CONFIG_KEYS = null;
 
     protected $data = null;
 
@@ -1976,7 +2060,7 @@ class PSSH_Config
 				$key = strtolower($match[1]);
 				$value = trim($match[2]);
 
-                if (!isset(self::$KEY_CASE_MAP[$key]))
+                if (!isset(self::$CONFIG_KEYS[$key]))
                 {
                     $original_keys[$key]= $match[1];
                 }
@@ -2011,12 +2095,12 @@ class PSSH_Config
 			}
 		}
 
-        // Warn about any new keys our mapping didn't have
+        // Warn about any unknown keys our mapping didn't have
         if (!empty($original_keys))
         {
             $original_keys = array_unique($original_keys);
             sort($original_keys);
-            $this->warn('New Keys Present - make sure these get added to PSSH_Config::$KEY_CASE_MAP');
+            $this->warn('Unknwon Config Key(s) Present - if these are valid, the PSSH code should be updated to know about them.');
             $this->output($original_keys);
         }
 
@@ -2150,7 +2234,7 @@ class PSSH_Config
 			foreach ($this->data['ssh'] as $key => $value)
 			{
 				// $this->log(" - $key: $value");
-				$Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
+				$Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
 				fwrite($path_handle, $Key . ' ' . $value . "\n");
 			}
         }
@@ -2187,7 +2271,7 @@ class PSSH_Config
         $output.='Host ' . $host['pssh']['alias'] . "\n";
         foreach ($host['ssh'] as $key => $value)
         {
-            $Key = isset(self::$KEY_CASE_MAP[$key]) ? self::$KEY_CASE_MAP[$key] : ucwords($key);
+            $Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
             $output.= '    ' . $Key . ' ' . $value . "\n";
         }
         return $output;
@@ -2307,6 +2391,7 @@ class PSSH_Config
     }
 
 }
+PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
 ?>
 <?php
 /**
@@ -2341,7 +2426,7 @@ class PSSH extends Console_Abstract
     ];
 
     // Config Variables
-    protected $__json_config_paths = ["Main JSON config file paths", "string"];
+    protected $__json_config_paths = ["Main JSON config file paths - first one will be synced by default, others will be ignored by default", "string"];
     public $json_config_paths = [];
 
     protected $__json_import_path = ["Default JSON config import path", "string"];
@@ -2355,6 +2440,8 @@ class PSSH extends Console_Abstract
 
     protected $__sync = ["Git SSH URL to sync config data", "string"];
     public $sync = '';
+
+	public $update_version_url = "https://raw.githubusercontent.com/chrisputnam9/pssh/master/README.md";
 
     protected $___add = [
         "Add new SSH host - interactive, or specify options",
@@ -2496,6 +2583,8 @@ class PSSH extends Console_Abstract
             $config->clean();
             $config->writeJSON($path);
         }
+
+        $this->output('Clean complete');
     }
 
     protected $___export = [
@@ -2514,6 +2603,8 @@ class PSSH extends Console_Abstract
         $config->readJSON($sources);
         $config->clean();
         $config->writeSSH($target);
+
+        $this->output('Export complete');
     }
 
     protected $___import = [
@@ -2527,12 +2618,17 @@ class PSSH extends Console_Abstract
         $target = $this->prepArg($target, $this->json_import_path);
         $source = $this->prepArg($source, $this->ssh_config_path);
 
-        $this->backup($target);
+        if (is_file($target))
+        {
+            $this->backup($target);
+        }
 
         $config = new PSSH_Config($this);
         $config->readSSH($source);
         $config->clean();
         $config->writeJSON($target);
+
+        $this->output('Import complete - see json in ' . $target);
 	}
 
     protected $___init_host = [
@@ -2629,6 +2725,7 @@ ____KEYS____;
         $this->backup($target_path);
         $this->backup($override_path);
 
+        $this->output("Merging config...");
         $source = new PSSH_Config($this);
         $source->readJSON($source_path);
 
@@ -2645,6 +2742,8 @@ ____KEYS____;
 
         $override->clean();
         $override->writeJSON($override_path);
+
+        $this->output("Merge complete");
     }
 
     protected $___search = [
@@ -2727,7 +2826,7 @@ ____KEYS____;
                 // $this->log('Setting up default ignore file');
                 $synced_config_json = empty($this->json_config_paths)
                     ? ''
-                    : '!' . array_unshift($this->json_config_paths);
+                    : '!' . str_replace($this->config_dir, "", array_shift($this->json_config_paths));
                 $ignore = <<<GITGNORE
 *
 !.gitignore

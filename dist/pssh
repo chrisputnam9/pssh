@@ -1247,7 +1247,7 @@ class Console_Abstract
             }
             else
             {
-                exec('getent passwd ' . $sudo_user . ' | cut -d: -f6', $output, $return);
+                exec('echo ~' . $sudo_user, $output, $return);
             }
 
             if (!$return and !empty($output))
@@ -2446,7 +2446,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.0.0";
+    const VERSION = "2.0.1";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

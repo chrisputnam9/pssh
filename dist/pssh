@@ -882,10 +882,17 @@ class Console_Abstract
         $this->log("exec: $command 2>&1");
         exec($command, $output, $return);
         $output = empty($output) ? "" : "\n\t" . implode("\n\t", $output);
-        if ($return and $error)
+        if ($return)
         {
             $output = empty($output) ? $return : $output;
-            $this->error($output);
+            if ($error)
+            {
+                $this->error($output);
+            }
+            else
+            {
+                $this->warn($output);
+            }
         }
         $this->log($output);
         return $output;
@@ -2446,7 +2453,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.0.1";
+    const VERSION = "2.0.2";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -2877,6 +2884,7 @@ ____KEYS____;
                 $ignore = <<<GITGNORE
 *
 !.gitignore
+!ssh_cli.sh
 {$synced_config_json}
 GITGNORE;
                 file_put_contents($this->config_dir . DS . '.gitignore', $ignore);

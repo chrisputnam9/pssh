@@ -4,7 +4,7 @@
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.0.1";
+    const VERSION = "2.0.2";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -435,6 +435,7 @@ ____KEYS____;
                 $ignore = <<<GITGNORE
 *
 !.gitignore
+!ssh_cli.sh
 {$synced_config_json}
 GITGNORE;
                 file_put_contents($this->config_dir . DS . '.gitignore', $ignore);

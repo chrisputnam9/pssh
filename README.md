@@ -3,6 +3,8 @@
 Quick getting started information for the most common use case.
 
 ## Latest Version
+See notes to follow below in case you are upgrading from a much earlier version.
+
 ### Download Latest Version (2.0.2):
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
@@ -52,6 +54,28 @@ https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 7. Sync again when ready
 
         pssh sync
+
+# Updating
+The script will periodically check for updates autmoatically and inform you when an update is
+available.
+
+If an update is available, you can run the following to install the update:
+
+    sudo pssh update
+
+# Upgrading from 1.0 and before
+Your config file may need some updates.  It's recommended that you edit your config file
+(~/.pssh/config.json) and delete all lines with empty values before updating.
+
+To update, if you are not on a self-updating version of the script, you will want to first remove
+the previous version of the script.  Find it with:
+
+    which pssh
+
+Then remove it from your bin path, or remove your alias - depending on how it was set up.
+
+Now, run the install following the steps above.  All configuration will transfer, and the script
+will now automatically check for updates!
 
 # USAGE:
 

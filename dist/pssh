@@ -1349,8 +1349,8 @@ class Console_Abstract
                 $success = true;
                 $success = ($success and chown($config_dir, $this->logged_in_user));
                 $success = ($success and chown($config_file, $this->logged_in_user));
-                $success = ($success and chgrp($config_dir, $this->logged_in_user));
-                $success = ($success and chgrp($config_file, $this->logged_in_user));
+                # $success = ($success and chgrp($config_dir, $this->logged_in_user));
+                # $success = ($success and chgrp($config_file, $this->logged_in_user));
 
                 if (!$success)
                 {
@@ -2453,7 +2453,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.0.2";
+    const VERSION = "2.0.3";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

@@ -17,11 +17,21 @@ if (!defined('DS'))
     define('DS', DIRECTORY_SEPARATOR);
 }
 
+// Either log or display all errors
+error_reporting(E_ALL);
+
 if (defined('ERRORS') and ERRORS)
 {
     // Enable and show errors
+    echo "\n\n************************************\n";
+    echo "* Displaying all errors & warnings *\n";
+    echo "************************************\n\n";
     ini_set('display_errors', 1);
-    error_reporting(E_ALL);
+}
+else
+{
+    // Disable PHP Error display
+    ini_set('display_errors', 0);
 }
 
 /**
@@ -30,12 +40,13 @@ if (defined('ERRORS') and ERRORS)
  */
 class Console_Abstract
 {
+
     /**
      * Padding for output
      */
-    const PAD_FULL = 130;
-    const PAD_COL1 = 30;
-    const PAD_COL2 = 50;
+    const DEFAULT_WIDTH = 130; // characters - if not able to dynamically determine
+    const COL1_WIDTH = 20; // percentage of full width
+    const COL2_WIDTH = 50; // percentage of full width - col1 + col2
 
     /**
      * Callable Methods
@@ -272,6 +283,9 @@ class Console_Abstract
                 }
             }
 
+            $instance->log('Determined home directory to be ' . $instance->home_dir);
+
+
             // Run an update check
             if ($instance->updateCheck(true, true)) // auto:true, output:true
             {
@@ -287,11 +301,12 @@ class Console_Abstract
 
             try {
                 call_user_func_array([$instance, $method], $args);
-            } catch (ArgumentCountError | InvalidArgumentException | Exception $e) {
-                $error = (get_class($e) == 'Exception') ? $e->getMessage() : "Incorrect usage - see method help below:";
-                $instance->error($error, false);
-                $instance->help($method);
-                exit(500);
+            } catch (ArgumentCountError $e) {
+                static::_run_error($e);
+            } catch (InvalidArgumentException $e) {
+                static::_run_error($e);
+            } catch (Exception $e) {
+                static::_run_error($e);
             }
 
             $instance->hrl();
@@ -301,6 +316,13 @@ class Console_Abstract
             $instance->error($e->getMessage());
         }
     }
+        protected static function _run_error($e)
+        {
+            $error = (get_class($e) == 'Exception') ? $e->getMessage() : "Incorrect usage - see method help below:";
+            $instance->error($error, false);
+            $instance->help($method);
+            exit(500);
+        }
 
     protected $___backup = [
         "Backup a file or files to the configured backup folder",
@@ -983,16 +1005,20 @@ class Console_Abstract
      */
     public function output3col($col1, $col2=null, $col3=null)
     {
-        $string = str_pad($col1, static::PAD_COL1, " ");
+        $full_width = $this->getTerminalWidth();
+        $col1_width = floor(($full_width * static::COL1_WIDTH) / 100);
+        $col2_width = floor(($full_width * static::COL2_WIDTH) / 100);
+
+        $string = str_pad($col1, $col1_width, " ");
         if (!is_null($col2))
         {
             $string.= "| " . $col2;
         }
         if (!is_null($col3))
         {
-            $string = str_pad($string, static::PAD_COL2, " ") . "| " . $col3;
+            $string = str_pad($string, $col2_width, " ") . "| " . $col3;
         }
-        $string = str_pad("| $string", static::PAD_FULL-1) . "|";
+        $string = str_pad("| $string", $full_width-1) . "|";
         $this->output($string);
     }
 
@@ -1018,7 +1044,7 @@ class Console_Abstract
      */
     public function hr($c='=', $prefix="")
     {
-        $string = str_pad($prefix, static::PAD_FULL, $c);
+        $string = str_pad($prefix, $this->getTerminalWidth(), $c);
         $this->output($string);
     }
     /**
@@ -1237,35 +1263,52 @@ class Console_Abstract
     {
         if (is_null($this->home_dir))
         {
+            $return_error = false;
+
             $sudo_user = "";
             if ($this->running_as_root)
             {
                 // Check if run via sudo vs. natively running as root
-                exec('echo "$SUDO_USER"', $output, $return);
-                if (!$return and !empty($output))
+                exec('echo "$SUDO_USER"', $output, $return_error);
+                if (!$return_error and !empty($output))
                 {
                     $sudo_user = trim(array_pop($output));
                 }
             }
 
+            // Not Sudo User?
             if (empty($sudo_user))
             {
-                exec('echo "$HOME"', $output, $return);
+                // Windows doesn't have 'HOME' set necessarily
+                if (empty($_SERVER['HOME']))
+                {
+                    $this->home_dir = $_SERVER['HOMEDRIVE'] . $_SERVER['HOMEDRIVE'];
+                }
+                // Simplest and most typical - get home dir from env vars.
+                else
+                {
+                    $this->home_dir = $_SERVER['HOME'];
+                }
             }
-            else
+            else // Running via sudo - get home dir of sudo user (if not root)
             {
-                exec('echo ~' . $sudo_user, $output, $return);
+                exec('echo ~' . $sudo_user, $output, $return_error);
+
+                if (!$return_error and !empty($output))
+                {
+                    $this->home_dir = trim(array_pop($output));
+                }
             }
 
-            if (!$return and !empty($output))
+            if (empty($this->home_dir))
             {
-                $this->home_dir = trim(array_pop($output));
+                $this->error('Something odd about this environment... can\'t figure out your home directory; please submit an issue with details about your environment');
             }
-        }
+            else if (!is_dir($this->home_dir))
+            {
+                $this->error('Something odd about this environment... home directory looks like "'.$this->home_dir.'" but that is not a directory; please submit an issue with details about your environment');
+            }
 
-        if (empty($this->home_dir))
-        {
-            $this->error('Something odd about this environment... can\'t figure out your home directory; please submit an issue with details about your environment');
         }
 
         return $this->home_dir;
@@ -1545,6 +1588,30 @@ class Console_Abstract
         {
             fclose($this->_cli_input_handle);
         }
+    }
+
+    protected $_terminal_width = null;
+    protected function getTerminalWidth($fresh=false)
+    {
+        if (is_null($this->_terminal_width))
+        {
+            exec("tput cols", $output, $return);
+
+            if (
+                $return
+                or empty($output)
+                or empty($output[0])
+                or !is_numeric($output[0])
+            ){
+                $this->_terminal_width = static::DEFAULT_WIDTH;
+            }
+            else
+            {
+                $this->_terminal_width = (int) $output[0];
+            }
+        }
+
+        return $this->_terminal_width;
     }
 
 }
@@ -2453,7 +2520,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.0.3";
+    const VERSION = "2.0.4";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

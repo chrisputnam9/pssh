@@ -104,7 +104,10 @@ class Console_Abstract
     protected $browser_exec = 'google-chrome "%s"';
 
     protected $__install_path = ["Install path of this tool", "string"];
-	public $install_path = "/usr/local/bin";
+	public $install_path = DS . "usr" . DS . "local" . DS . "bin";
+
+    protected $__ssl_check = "Whether to check SSL certificates with curl";
+	public $ssl_check = true;
 
     protected $__stamp_lines = "Stamp output lines";
 	public $stamp_lines = false;
@@ -158,6 +161,8 @@ class Console_Abstract
     protected $current_user = '';
     protected $logged_in_as_root = false;
     protected $running_as_root = false;
+    protected $is_windows = false;
+    protected $minimum_php_major_version = '7';
 
     // Update behavior
     // - DOWNLOAD - download and install update
@@ -220,6 +225,35 @@ class Console_Abstract
             $this->current_user = trim(implode($current_user));
         }
         $this->running_as_root = ($this->current_user == 'root');
+
+        $this->is_windows = (strtolower(substr(PHP_OS, 0, 3)) === 'win');
+    }
+
+    /**
+     * Check requirements
+     * - Extend in child if needed and pass problems to parent
+     */
+    protected function checkRequirements($problems=[])
+    {
+        $this->log("PHP Version: " . PHP_VERSION);
+
+        $php_version = explode('.', PHP_VERSION);
+        $major = (int) $php_version[0];
+        if ($major < $this->minimum_php_major_version)
+        {
+            $problems[]= "This tool is not well tested below PHP " . $this->minimum_php_major_version .
+                " - please consider upgrading to PHP " . $this->minimum_php_major_version . ".0 or higher";
+        }
+
+        if (!function_exists('curl_version'))
+        {
+            $problems[]= "This tool requires curl for many features such as update checks and installs - please install php-curl";
+        }
+
+        if (!empty($problems))
+        {
+            $this->error("There are some problems with requirements: \n - " . implode("\n - ", $problems), false, true);
+        }
     }
 
     /**
@@ -238,6 +272,8 @@ class Console_Abstract
         try
         {
             $instance->initConfig();
+
+            $instance->checkRequirements();
 
             $valid_methods = array_merge($class::$METHODS, self::$METHODS);
 
@@ -614,13 +650,26 @@ class Console_Abstract
             $install_path = $this->install_path;
         }
 
+        if ($is_windows)
+        {
+            $this->warn(
+                "Since you appear to be running on Windows, you will very likely need to modify your install path" . 
+                " - The current setting is: " . $install_path . 
+                " - The desired setting will vay based on your environment, but you'll probably want to use a directory that's in your PATH" .
+                " - For example, if you're using Git Bash, you may want to use: C:\Program Files\Git\usr\local\bin as your install path " .
+                " Enter 'y' if the install path is correct and you are ready to install" . 
+                " Enter 'n' to halt now so you can edit 'install_path' in your config file (" . $this->getConfigFile() . ")", 
+                true
+            );
+        }
+
         if (!is_dir($install_path))
         {
             $this->warn("Install path ($install_path) does not exist and will be created", true);
 
-            $success = mkdir($install_path, 0755);
+            $success = mkdir($install_path, 0755, true);
 
-            if (!$success) $this->error("Failed to create install path ($install_path) - may need higher privileges (eg. sudo)");
+            if (!$success) $this->error("Failed to create install path ($install_path) - may need higher privileges (eg. sudo or run as admin)");
         }
 
         $tool_path = __FILE__;
@@ -634,7 +683,7 @@ class Console_Abstract
 
         $success = rename($tool_path, $install_tool_path);
 
-        if (!$success) $this->error("Install failed - may need higher privileges (eg. sudo)");
+        if (!$success) $this->error("Install failed - may need higher privileges (eg. sudo or run as admin)");
 
         $this->configure('install_path', $install_path, true);
         $this->saveConfig();
@@ -684,9 +733,9 @@ class Console_Abstract
         {
             $this->warn("Install path ($this->install_path) does not exist and will be created", true);
 
-            $success = mkdir($this->install_path, 0755);
+            $success = mkdir($this->install_path, 0755, true);
 
-            if (!$success) $this->error("Failed to create install path ($this->install_path) - may need higher privileges (eg. sudo)");
+            if (!$success) $this->error("Failed to create install path ($this->install_path) - may need higher privileges (eg. sudo or run as admin)");
         }
 
         $this->log('Downloading update to temp file, from ' . $this->update_url);
@@ -695,15 +744,15 @@ class Console_Abstract
         if (is_file($temp_path))
         {
             $success = unlink($temp_path);
-            if (!$success) $this->error("Failed to delete existing temp file ($temp_path) - may need higher privileges (eg. sudo)");
+            if (!$success) $this->error("Failed to delete existing temp file ($temp_path) - may need higher privileges (eg. sudo or run as admin)");
         }
 
         $curl = $this->getCurl($this->update_url, true);
-        $updated_contents = curl_exec($curl);
+        $updated_contents = $this->execCurl($curl);
         if (empty($updated_contents)) $this->error("Download failed - no contents at " . $this->update_url);
 
         $success = file_put_contents($temp_path, $updated_contents);
-        if (!$success) $this->error("Failed to write to temp file ($temp_path) - may need higher privileges (eg. sudo)");
+        if (!$success) $this->error("Failed to write to temp file ($temp_path) - may need higher privileges (eg. sudo or run as admin)");
 
         if ($this->update_check_hash)
         {
@@ -721,7 +770,7 @@ class Console_Abstract
         $this->log('Installing downloaded file');
         $success = rename($temp_path, $config_install_tool_path);
         $success = $success and chmod($config_install_tool_path, 0755);
-        if (!$success) $this->error("Update failed - may need higher privileges (eg. sudo)");
+        if (!$success) $this->error("Update failed - may need higher privileges (eg. sudo or run as admin)");
 
         $this->output('Update complete');
     }
@@ -794,7 +843,7 @@ class Console_Abstract
 
             // curl, get contents at config url
             $curl = $this->getCurl($this->update_version_url, true);
-            $update_contents = curl_exec($curl);
+            $update_contents = $this->execCurl($curl);
 
             // look for version match
             if ($this->update_version_pattern[0] === true)
@@ -928,7 +977,7 @@ class Console_Abstract
      *  - 200 - safety / caution error (eg. running as root)
      *  - 500 - misc. error
 	 */
-	public function error($data, $code=500)
+	public function error($data, $code=500, $prompt_to_continue=false)
 	{
         $this->hr('!');
 		$this->output('ERROR: ', false);
@@ -938,6 +987,15 @@ class Console_Abstract
 		{
 			exit($code);
 		}
+
+        if ($prompt_to_continue)
+        {
+            $yn = $this->input("Continue? (y/n)", 'n', false, true);
+            if (!in_array($yn, ['y', 'Y']))
+            {
+                $this->error('Aborted', 100);
+            }
+        }
 	}
 
 	/**
@@ -1197,9 +1255,8 @@ class Console_Abstract
             if ($message) $this->output($message, false);
             if ($single)
             {
-                $line = strtolower( trim( `bash -c "read -n 1 -t 10 INPUT ; echo \\\$INPUT"` ) );
+                $line = strtolower( trim( `bash -c 'read -n1 -t10 CHAR && echo \$CHAR'` ) );
                 $this->output('');
-                // $line = fgetc($handle);
             }
             else
             {
@@ -1519,22 +1576,56 @@ class Console_Abstract
     // Get basic curl
     public function getCurl($url, $fresh_no_cache=false)
     {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
+        if (!$this->ssl_check)
+        {
+            $this->warn("Initializing unsafe connection to $url (no SSL check, as configured)", true);
+        }
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
             CURLOPT_URL => $url,
             CURLOPT_HEADER => false,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 0,
             CURLOPT_TIMEOUT => 180,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYHOST => ($this->ssl_check ? 2 : 0),
+            CURLOPT_SSL_VERIFYPEER => ($this->ssl_check ? 2 : 0),
         ]);
 
         if ($fresh_no_cache)
         {
-            curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+            curl_setopt($curl, CURLOPT_FRESH_CONNECT, true);
         }
-        
-        return $ch;
+
+        return $curl;
+    }
+
+    // Exec curl and handle errors, return response if good
+    public function execCurl($curl)
+    {
+        $response = curl_exec($curl);
+
+        if (empty($response))
+        {
+            $number = curl_errno($curl);
+
+            // Was there an error?
+            if ($number)
+            {
+                $message = curl_error($curl);
+
+                if (stripos($message, 'ssl'))
+                {
+                    $message.= "\n\nFor some SSL issues, try downloading the latest CA bundle and pointing your PHP.ini to that (https://curl.haxx.se/docs/caextract.html)";
+                    $message.= "\n\nAlthough risky and not recommended, you can also consider re-running your command with the --no-ssl-check flag";
+                }
+
+                $this->warn($message, true);
+            }
+        }
+
+        return $response;
     }
 
     /**
@@ -2520,7 +2611,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.0.4";
+    const VERSION = "2.1.0";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

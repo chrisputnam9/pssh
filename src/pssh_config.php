@@ -517,7 +517,12 @@ class PSSH_Config
     public function search($termstring)
     {
         $termstring = strtolower(trim($termstring));
-        if(empty($termstring)) $this->error('Must enter search term(s)');
+
+        // No search - return all hosts
+        if(empty($termstring))
+        {
+            return array_map([$this, 'writeSSHHost'], $this->data['hosts']);
+        }
 
         $terms = explode(" ", $termstring);
         $terms = array_map('trim', $terms);

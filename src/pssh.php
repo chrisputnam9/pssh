@@ -18,6 +18,7 @@ class PSSH extends Console_Abstract
         'export',
         'import',
         'init_host',
+        'list',
         'merge',
         'search',
         'sync',
@@ -374,27 +375,18 @@ ____KEYS____;
         }
         else
         {
-            $count = count($results);
-            $this->hr();
-            $this->output("Found $count total matches: ");
-            $this->hr();
-
-            foreach ($results as $r => $result)
-            {
-                if ($r > 0 and $r%5 == 0)
-                {
-                    $this->hr();
-                    $key = $this->input("[ c - SHOW MORE | q - QUIT ]", 'c', false, true);
-                    if ($key == 'q')
-                    {
-                        break;
-                    }
-                    $this->hr();
-                }
-                $this->output($result, false);
-            }
-            $this->hr();
+            $list = new List_Command($this, $results); 
+            $list->run();
         }
+    }
+
+    protected $___list = [
+        "List all hosts",
+        ["JSON config path(s) to list - defaults to json-config-paths", "string"],
+    ];
+    public function list($paths=null)
+    {
+        $this->search($paths);
     }
 
     /**

@@ -375,7 +375,9 @@ ____KEYS____;
         }
         else
         {
-            $list = new List_Command($this, $results); 
+            $list = new List_Command($this, $results, [
+                'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+            ]); 
             $list->run();
         }
     }

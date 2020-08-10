@@ -521,7 +521,7 @@ class PSSH_Config
         // No search - return all hosts
         if(empty($termstring))
         {
-            return array_map([$this, 'writeSSHHost'], $this->data['hosts']);
+            return $this->data['hosts'];
         }
 
         $terms = explode(" ", $termstring);
@@ -593,7 +593,7 @@ class PSSH_Config
                 // - we are making the bold assumption that there are less than 1 billion host entries
                 $levity = ($levity * 1000000000) + $h;
 
-                $results[$levity] = $this->writeSSHHost($host);
+                $results[$levity] = $host;
             }
             
             $h++;

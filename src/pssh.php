@@ -377,6 +377,15 @@ ____KEYS____;
         {
             $list = new List_Command($this, $results, [
                 'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+                'commands' => [
+                    'Initialize the selected host(s)' => [
+                        'i',
+                        function ($list_instance, $selected_key, $selected_value)
+                        {
+                            $this->init_host($selected_value['pssh']['alias']);
+                        }
+                    ]
+                ],
             ]); 
             $list->run();
         }

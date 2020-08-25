@@ -15,6 +15,7 @@ class PSSH extends Console_Abstract
     protected static $METHODS = [
         'add',
         'clean',
+        'edit_host',
         'export',
         'import',
         'init_host',
@@ -237,6 +238,58 @@ class PSSH extends Console_Abstract
         $this->output('Import complete - see json in ' . $target);
 	}
 
+    protected $___edit_host = [
+        "Edit host - modify config in your editor",
+        ["Alias of host", "string", "required"],
+    ];
+    public function edit_host($alias) {
+        
+        // Sync before - to get latest data
+        $this->sync();
+
+        $config = new PSSH_Config($this);
+        $config->readJSON($this->json_config_paths);
+
+        $host_data = $config->getHosts($alias);
+        $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
+
+        while (true)
+        {
+            $host_json = $this->edit($host_json, $alias . ".json");
+            $host_data = json_decode($host_json);
+            if (empty($host_data))
+            {
+                $this->warn("Invalid JSON - check your syntax");
+                $continue = $this->confirm("Keep editing?");
+                if ( ! $continue )
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        $config->setHost($alias, $host_data);
+
+        // Backup, clean, save json
+        $this->backup($this->json_config_paths);
+        $config->clean();
+
+        die("Need to figure out how to write to correct file(s)");
+        $config->writeJson($this->json_config_paths);
+
+        // write out ssh config
+        $this->export();
+
+        $this->sync();
+
+        $this->hr();
+        $this->output('Done!');
+    }
+
     protected $___init_host = [
         "Initialize host - interactive, or specify options",
         ["Alias of host", "string", "required"],
@@ -378,11 +431,18 @@ ____KEYS____;
             $list = new List_Command($this, $results, [
                 'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
                 'commands' => [
-                    'Initialize the selected host(s)' => [
+                    'Initialize the focused host' => [
                         'i',
-                        function ($list_instance, $selected_key, $selected_value)
+                        function ($list_instance, $focused_key, $focused_value)
                         {
-                            $this->init_host($selected_value['pssh']['alias']);
+                            $this->init_host($focused_value['pssh']['alias']);
+                        }
+                    ],
+                    'Edit the focused host' => [
+                        'e',
+                        function ($list_instance, $focused_key, $focused_value)
+                        {
+                            $this->edit_host($focused_value['pssh']['alias']);
                         }
                     ]
                 ],

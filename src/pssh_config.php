@@ -252,6 +252,16 @@ class PSSH_Config
     }
 
     /**
+     * Set a host by alias with new data
+     * @param $alias - to replace
+     * @param $data - to replace with
+     */
+    public function setHost($alias, $data)
+    {
+        $this->data['hosts'][$alias] = $data;
+    }
+
+    /**
      * Get hosts by hostname, or full map
      * @param $hostname - leave out to return all
      */

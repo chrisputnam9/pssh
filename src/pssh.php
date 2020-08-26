@@ -241,22 +241,40 @@ class PSSH extends Console_Abstract
     protected $___edit_host = [
         "Edit host - modify config in your editor",
         ["Alias of host", "string", "required"],
+        ["Specific JSON file(s) to edit - defaults to json-config-paths", "string"],
     ];
-    public function edit_host($alias) {
+    public function edit_host($alias, $paths=null) {
+        $paths = $this->prepArg($paths, $this->json_config_paths);
         
         // Sync before - to get latest data
         $this->sync();
 
-        $config = new PSSH_Config($this);
-        $config->readJSON($this->json_config_paths);
+        $host_json = false;
 
-        $host_data = $config->getHosts($alias);
-        $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
+        foreach ($paths as $config_path)
+        {
+            $config = new PSSH_Config($this);
+            $config->readJSON($config_path);
+            $host_data = $config->getHosts($alias);
+            if (!empty($host_data) and !empty($host_data[0]))
+            {
+                $host_data = $host_data[0];
+                $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
+                break;
+            }
+        }
+
+        if (empty($host_json))
+        {
+            $this->error("Host '$alias' not found in config files");
+        }
+
+        $original_json = $host_json;
 
         while (true)
         {
             $host_json = $this->edit($host_json, $alias . ".json");
-            $host_data = json_decode($host_json);
+            $host_data = json_decode($host_json, true);
             if (empty($host_data))
             {
                 $this->warn("Invalid JSON - check your syntax");
@@ -272,14 +290,18 @@ class PSSH extends Console_Abstract
             }
         }
 
+        if ($host_json == $original_json)
+        {
+            return false;
+        }
+
         $config->setHost($alias, $host_data);
 
         // Backup, clean, save json
-        $this->backup($this->json_config_paths);
+        $this->backup($config_path);
         $config->clean();
 
-        die("Need to figure out how to write to correct file(s)");
-        $config->writeJson($this->json_config_paths);
+        $config->writeJson($config_path);
 
         // write out ssh config
         $this->export();
@@ -288,6 +310,7 @@ class PSSH extends Console_Abstract
 
         $this->hr();
         $this->output('Done!');
+        return true;
     }
 
     protected $___init_host = [

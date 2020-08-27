@@ -290,8 +290,11 @@ class PSSH extends Console_Abstract
             }
         }
 
+        // Test for actual changes
+        $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
         if ($host_json == $original_json)
         {
+            // No actual change, no need to update
             return false;
         }
 
@@ -451,25 +454,38 @@ ____KEYS____;
         }
         else
         {
-            $list = new List_Command($this, $results, [
-                'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
-                'commands' => [
-                    'Initialize the focused host' => [
-                        'i',
-                        function ($list_instance, $focused_key, $focused_value)
-                        {
-                            $this->init_host($focused_value['pssh']['alias']);
-                        }
-                    ],
-                    'Edit the focused host' => [
-                        'e',
-                        function ($list_instance, $focused_key, $focused_value)
-                        {
-                            $this->edit_host($focused_value['pssh']['alias']);
-                        }
-                    ]
+            $list = new List_Command($this, $results,
+                // Reload function
+                function ($reload_data) {
+                    $config = new PSSH_Config($this);
+                    $config->readJSON($reload_data['paths']);
+                    return $config->search($reload_data['terms']);
+                },
+                // Reload data
+                [
+                    'paths' => $paths,
+                    'terms' => $terms,
                 ],
-            ]); 
+                [
+                    'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+                    'commands' => [
+                        'Initialize the focused host' => [
+                            'i',
+                            function ($list_instance, $focused_key, $focused_value)
+                            {
+                                $this->init_host($focused_value['pssh']['alias']);
+                            }
+                        ],
+                        'Edit the focused host' => [
+                            'e',
+                            function ($list_instance, $focused_key, $focused_value)
+                            {
+                                $this->edit_host($focused_value['pssh']['alias']);
+                            }
+                        ]
+                    ],
+                ]
+            ); 
             $list->run();
         }
     }

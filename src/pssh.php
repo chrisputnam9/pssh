@@ -469,19 +469,22 @@ ____KEYS____;
                 [
                     'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
                     'commands' => [
-                        'Initialize the focused host' => [
-                            'i',
-                            function ($list_instance, $focused_key, $focused_value)
+                        'init_host' => [
+                            'description' => 'Initialize the focused host',
+                            'keys' => 'i',
+                            'callback' => function ($list_instance, $focused_key, $focused_value)
                             {
                                 $this->init_host($focused_value['pssh']['alias']);
-                            }
+                            },
                         ],
-                        'Edit the focused host' => [
-                            'e',
-                            function ($list_instance, $focused_key, $focused_value)
+                        'edit_host' => [
+                            'description' => 'Edit the focused host',
+                            'keys' => 'e',
+                            'callback' => function ($list_instance, $focused_key, $focused_value)
                             {
                                 $this->edit_host($focused_value['pssh']['alias']);
-                            }
+                            },
+                            'reload' => true,
                         ]
                     ],
                 ]

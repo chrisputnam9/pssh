@@ -454,7 +454,7 @@ ____KEYS____;
         }
         else
         {
-            $list = new List_Command($this, $results,
+            $list = new Command_Visual_List($this, $results,
                 // Reload function
                 function ($reload_data) {
                     $config = new PSSH_Config($this);
@@ -472,19 +472,21 @@ ____KEYS____;
                         'init_host' => [
                             'description' => 'Initialize the focused host',
                             'keys' => 'i',
-                            'callback' => function ($list_instance, $focused_key, $focused_value)
+                            'callback' => function ($list_instance)
                             {
+                                $focused_value = $list_instance->getFocusedValue();
                                 $this->init_host($focused_value['pssh']['alias']);
                             },
                         ],
                         'edit_host' => [
                             'description' => 'Edit the focused host',
                             'keys' => 'e',
-                            'callback' => function ($list_instance, $focused_key, $focused_value)
+                            'callback' => function ($list_instance)
                             {
+                                $focused_value = $list_instance->getFocusedValue();
                                 $this->edit_host($focused_value['pssh']['alias']);
                             },
-                            'reload' => true,
+                            'after' => 'reload',
                         ]
                     ],
                 ]

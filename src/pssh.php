@@ -454,7 +454,7 @@ ____KEYS____;
         }
         else
         {
-            $list = new Command_Visual_List($this, $results,
+            $list = new Command_Visual_List($this,
                 // Reload function
                 function ($reload_data) {
                     $config = new PSSH_Config($this);
@@ -466,6 +466,7 @@ ____KEYS____;
                     'paths' => $paths,
                     'terms' => $terms,
                 ],
+                $results,
                 [
                     'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
                     'commands' => [
@@ -486,7 +487,7 @@ ____KEYS____;
                                 $focused_value = $list_instance->getFocusedValue();
                                 $this->edit_host($focused_value['pssh']['alias']);
                             },
-                            'after' => 'reload',
+                            'reload' => true,
                         ]
                     ],
                 ]

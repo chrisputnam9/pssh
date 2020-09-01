@@ -454,21 +454,18 @@ ____KEYS____;
         }
         else
         {
-            $list = new Command_Visual_List($this,
-                // Reload function
-                function ($reload_data) {
-                    $config = new PSSH_Config($this);
-                    $config->readJSON($reload_data['paths']);
-                    return $config->search($reload_data['terms']);
-                },
-                // Reload data
-                [
-                    'paths' => $paths,
-                    'terms' => $terms,
-                ],
-                $results,
+            $list = new Command_Visual_List($this, $results,
                 [
                     'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+                    'reload_function' => function ($reload_data) {
+                        $config = new PSSH_Config($this);
+                        $config->readJSON($reload_data['paths']);
+                        return $config->search($reload_data['terms']);
+                    },
+                    'reload_data' => [
+                        'paths' => $paths,
+                        'terms' => $terms,
+                    ],
                     'commands' => [
                         'init_host' => [
                             'description' => 'Initialize the focused host',

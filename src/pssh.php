@@ -16,6 +16,7 @@ class PSSH extends Console_Abstract
         'add',
         'clean',
         'edit_host',
+        'delete_host',
         'export',
         'import',
         'init_host',
@@ -238,10 +239,48 @@ class PSSH extends Console_Abstract
         $this->output('Import complete - see json in ' . $target);
 	}
 
+    protected $___delete_host = [
+        "Delete host",
+        ["Alias of host to delete", "string", "required"],
+        ["Specific JSON file(s) to delete from - defaults to delete from ALL files in json-config-paths", "string"],
+    ];
+    public function delete_host($alias, $paths=null) {
+
+        $paths = $this->prepArg($paths, $this->json_config_paths);
+        
+        // Sync before - to get latest data
+        $this->sync();
+
+        $host_json = false;
+
+        foreach ($paths as $config_path)
+        {
+            $config = new PSSH_Config($this);
+            $config->readJSON($config_path);
+
+            if ($config->deleteHost($alias))
+            {
+                // Backup, clean, save json
+                $this->backup($config_path);
+                $config->clean();
+                $config->writeJson($config_path);
+            }
+        }
+
+        // write out ssh config
+        $this->export();
+
+        $this->sync();
+
+        $this->hr();
+        $this->output('Done!');
+        return true;
+    }
+
     protected $___edit_host = [
         "Edit host - modify config in your editor",
         ["Alias of host", "string", "required"],
-        ["Specific JSON file(s) to edit - defaults to json-config-paths", "string"],
+        ["Specific JSON file(s) to edit - defaults to first found in json-config-paths that contains the host alias", "string"],
     ];
     public function edit_host($alias, $paths=null) {
         $paths = $this->prepArg($paths, $this->json_config_paths);
@@ -476,6 +515,20 @@ ____KEYS____;
                                 $this->init_host($focused_value['pssh']['alias']);
                             },
                         ],
+                        'delete_host' => [
+                            'description' => 'Delete the focused host',
+                            'keys' => 'd',
+                            'callback' => function ($list_instance)
+                            {
+                                $focused_value = $list_instance->getFocusedValue();
+                                $host_alias = $focused_value['pssh']['alias'];
+                                if ($this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n"))
+                                {
+                                    $this->delete_host($host_alias);
+                                }
+                            },
+                            'reload' => true,
+                        ],
                         'edit_host' => [
                             'description' => 'Edit the focused host',
                             'keys' => 'e',
@@ -485,7 +538,7 @@ ____KEYS____;
                                 $this->edit_host($focused_value['pssh']['alias']);
                             },
                             'reload' => true,
-                        ]
+                        ],
                     ],
                 ]
             ); 

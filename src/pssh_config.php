@@ -252,6 +252,21 @@ class PSSH_Config
     }
 
     /**
+     * Delete hosts by alias
+     * @param $alias
+     */
+    public function deleteHost($alias)
+    {
+        if (!empty($alias) and isset($this->data['hosts'][$alias]))
+        {
+            unset($this->data['hosts'][$alias]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Set a host by alias with new data
      * @param $alias - to replace
      * @param $data - to replace with

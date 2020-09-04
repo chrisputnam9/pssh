@@ -4,7 +4,7 @@
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.1.1";
+    const VERSION = "2.2.0";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

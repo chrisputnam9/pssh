@@ -5,287 +5,182 @@
 ##################################################
 define('ERRORS', false);
 define('PACKAGED', true);
-?>
+
+// Note: leave this for packaging ?>
+<?php
+
+/**
+ * Color constants
+ *  - https://en.wikipedia.org/wiki/ANSI_escape_code
+ */
+class CONSOLE_COLORS
+{
+    public static $foreground = [
+        'black' => '0;30',
+        'dark_gray' => '1;30',
+        'blue' => '0;34',
+        'light_blue' => '1;34',
+        'green' => '0;32',
+        'light_green' => '1;32',
+        'cyan' => '0;36',
+        'light_cyan' => '1;36',
+        'red' => '0;31',
+        'light_red' => '1;31',
+        'purple' => '0;35',
+        'light_purple' => '1;35',
+        'brown' => '0;33',
+        'yellow' => '1;33',
+        'light_gray' => '0;37',
+        'white' => '1;37',
+    ];
+
+    public static $background = [
+        'black' => '40',
+        'red' => '41',
+        'green' => '42',
+        'yellow' => '43',
+        'blue' => '44',
+        'magenta' => '45',
+        'cyan' => '46',
+        'light_gray' => '47',
+    ];
+
+    public static $other = [
+        'bold' => '1',
+        'dim' => '2',
+        'underline' => '4',
+        'blink' => '5',
+        'inverse' => '7',
+
+        // Don't seem to work for the author at least:
+        //'italic' => '3',
+        //'blink_fast' => '6',
+        //'concealed' => '8',
+        //'strike' => '9',
+        //'double_underline' => '21',
+        //'frame' => '51',
+        //'encircled' => '52',
+        //'overlined' => '53',
+    ];
+}
+
+// Note: leave this for packaging ?>
 <?php
 /**
- * Console Abstract to be extended by specific console tools
+ * Command abstract
+ *  - primary or subcommand structure
+ *  - main "run" method accepts and parses arguments
+ *  - default run method checks for available sub-methods
  */
-
-// Global Constants
-if (!defined('DS'))
+class Command
 {
-    define('DS', DIRECTORY_SEPARATOR);
-}
-
-// Either log or display all errors
-error_reporting(E_ALL);
-
-if (defined('ERRORS') and ERRORS)
-{
-    // Enable and show errors
-    echo "\n\n************************************\n";
-    echo "* Displaying all errors & warnings *\n";
-    echo "************************************\n\n";
-    ini_set('display_errors', 1);
-}
-else
-{
-    // Disable PHP Error display
-    ini_set('display_errors', 0);
-}
-
-/**
- * Console Abstract
- * Reusable abstract for creating PHP console utilities
- */
-class Console_Abstract
-{
-
-    /**
-     * Padding for output
-     */
-    const DEFAULT_WIDTH = 130; // characters - if not able to dynamically determine
-    const COL1_WIDTH = 20; // percentage of full width
-    const COL2_WIDTH = 50; // percentage of full width - col1 + col2
 
     /**
      * Callable Methods
      */
     protected static $METHODS = [
-        'backup',
-        'eval_file',
+        'clear',
+        'exit',
         'help',
-        'install',
-        'update',
-        'version',
+        'prompt',
     ];
+
+    /**
+     * Method aliases
+     */
+    protected static $METHOD_ALIASES = [
+        'h' => 'help',
+        '?' => 'help',
+        'p' => 'prompt',
+        'x' => 'exit',
+        'q' => 'exit',
+        'quit' => 'exit',
+    ];
+
+    /**
+     * Default method if none specified
+     */
+    protected static $DEFAULT_METHOD="prompt";
 
     /**
      * Methods that are OK to run as root without warning
      */
-    protected static $ROOT_METHODS = [
-        'help',
-        'install',
-        'update',
-        'version',
-    ];
+    protected static $ROOT_METHODS = [];
 
     /**
      * Config options that are hidden from help output
      * - Add config values here that would not typically be overridden by a flag
      * - Cleans up help output and avoids confusion
      */
-    protected static $HIDDEN_CONFIG_OPTIONS = [
-        'backup_age_limit',
-        'backup_dir',
-        'browser_exec',
-        'install_path',
-        'step',
-        'timezone',
-        'update_auto',
-        'update_check_hash',
-        'update_last_check',
-        'update_version_url',
-    ];
-
-	/**
-	 * Config/option defaults
-	 */
-    protected $__allow_root = "OK to run as root";
-    public $allow_root = false;
-
-    protected $__backup_age_limit = ["Age limit of backups to keep- number of days", "string"];
-    public $backup_age_limit = '30';
-
-    protected $__backup_dir = ["Location to save backups", "string"];
-    public $backup_dir = null;
-
-    protected $__browser_exec = ["Command to open links in browser - %s for link placeholder via sprintf"];
-    protected $browser_exec = 'google-chrome "%s"';
-
-    protected $__install_path = ["Install path of this tool", "string"];
-	public $install_path = DS . "usr" . DS . "local" . DS . "bin";
-
-    protected $__ssl_check = "Whether to check SSL certificates with curl";
-	public $ssl_check = true;
-
-    protected $__stamp_lines = "Stamp output lines";
-	public $stamp_lines = false;
-
-    protected $__step = "Enable stepping points";
-	public $step = false;
-
-    protected $__timezone = ["Timezone - from http://php.net/manual/en/timezones.", "string"];
-    public $timezone = "US/Eastern";
-
-    /* Default: check every 24 hrs
-        24 * 60 * 60 = 86400
-    */
-    protected $__update_auto = ["How often to automatically check for an update (seconds, 0 to disable)", "int"];
-	public $update_auto = 86400;
-
-    protected $__update_last_check = ["Formatted timestap of last update check", "string"];
-	public $update_last_check = "";
-
-    // Note: this is configurable, and the child class can also set a default
-    //  - empty string = not updatable
-    //  - Tip: if using Github md file, use raw URL for simpler parsing
-    protected $__update_version_url = ["URL to check for latest version number info", "string"];
-	public $update_version_url = "";
-
-    // Note: this is configurable, and the child class can also set a default
-    protected $__update_check_hash = ["Whether to check hash of download when updating", "binary"];
-	public $update_check_hash = true;
-
-    protected $__verbose = "Enable verbose output";
-	public $verbose = false;
+    protected static $HIDDEN_CONFIG_OPTIONS = [];
 
     /**
-     * Config paths
+     * Main Tool instance
      */
-    protected $config_dir = null;
-    protected $config_file = null;
-    protected $home_dir = null;
+    protected $main_tool;
 
     /**
-     * Stuff
-     * Child class can override all as needed
+     * Constructor
      */
-    protected $config_initialized = false;
-    protected $config_to_save = null;
-    protected $dt = null;
-    protected $run_stamp = '';
-    protected $method = '';
-
-    protected $logged_in_user = '';
-    protected $current_user = '';
-    protected $logged_in_as_root = false;
-    protected $running_as_root = false;
-    protected $is_windows = false;
-    protected $minimum_php_major_version = '7';
-
-    // Update behavior
-    // - DOWNLOAD - download and install update
-    // - Other - show text as a custom message
-    protected $update_behavior='DOWNLOAD';
-
-    // Set this to false in child class to disable updates
-    protected $update_pattern_standard = "~
-        download\ latest\ version \s*
-        \( \s*
-            ( [\d.]+ )
-        \s* \) \s* :
-        \s* ( \S* ) \s*$
-    ~ixm";
-
-    // Set this to false in child class to disable hash check
-    protected $hash_pattern_standard = "~
-        latest\ version\ hash \s*
-        \( \s*
-            ( .+ )
-        \s* \) \s* :
-        \s* ([0-9a-f]+)
-    ~ixm";
-
-    // True to use the standard
-    // - otherwise, specify pattern string as needed
-    protected $update_version_pattern = [ true, 1 ];
-    protected $update_download_pattern = [ true, 2 ];
-    protected $update_hash_algorithm_pattern = [ true, 1 ];
-    protected $update_hash_pattern = [ true, 2 ];
-
-    protected $update_exists = null;
-    protected $update_version = "0";
-    protected $update_url = "";
-
-    // This is used when packaging via pcon, for convenience,
-    //  but will be read dynamically from the download page
-    //  to check the downloaded file
-    protected $update_hash_algorithm = "md5";
-    protected $update_hash = "";
-    
-    /**
-     * Constructor - set up basics
-     */
-    public function __construct()
+    public function __construct($main_tool)
     {
-        date_default_timezone_set($this->timezone);
-        $this->run_stamp = $this->stamp();
-
-        exec('logname', $logged_in_user, $return);
-        if ($return == 0 and !empty($logged_in_user))
-        {
-            $this->logged_in_user = trim(implode($logged_in_user));
-        }
-        $this->logged_in_as_root = ($this->logged_in_user == 'root');
-
-        exec('whoami', $current_user, $return);
-        if ($return == 0 and !empty($current_user))
-        {
-            $this->current_user = trim(implode($current_user));
-        }
-        $this->running_as_root = ($this->current_user == 'root');
-
-        $this->is_windows = (strtolower(substr(PHP_OS, 0, 3)) === 'win');
+        $this->setMainTool($main_tool);
     }
 
     /**
-     * Check requirements
-     * - Extend in child if needed and pass problems to parent
+     * Set Main Tool
+     * - for shared functionality
      */
-    protected function checkRequirements($problems=[])
+    public function setMainTool($main_tool)
     {
-        $this->log("PHP Version: " . PHP_VERSION);
-        $this->log("OS: " . PHP_OS);
-        $this->log("Windows: " . ($this->is_windows ? "Yes" : "No"));
-
-        $php_version = explode('.', PHP_VERSION);
-        $major = (int) $php_version[0];
-        if ($major < $this->minimum_php_major_version)
-        {
-            $problems[]= "This tool is not well tested below PHP " . $this->minimum_php_major_version .
-                " - please consider upgrading to PHP " . $this->minimum_php_major_version . ".0 or higher";
-        }
-
-        if (!function_exists('curl_version'))
-        {
-            $problems[]= "This tool requires curl for many features such as update checks and installs - please install php-curl";
-        }
-
-        if (!empty($problems))
-        {
-            $this->error("There are some problems with requirements: \n - " . implode("\n - ", $problems), false, true);
-        }
+        $this->main_tool = $main_tool;
     }
 
     /**
      * Run - parse args and run method specified
      */
-    public static function run($argv)
+    public function try_calling($arg_list, $initial=false, $prompt_when_done=false)
     {
-        $class = get_called_class();
+        $this->log($arg_list);
 
-        $script = array_shift($argv);
-        $method = array_shift($argv);
+        $method = array_shift($arg_list);
 
-        $instance = new $class();
-        $instance->method = $method;
+        $class = get_class($this);
+
+        if (empty($method))
+        {
+            $method = static::$DEFAULT_METHOD;
+        }
+
+        $aliases = static::getMergedProperty('METHOD_ALIASES');
+        if (isset($aliases[$method]))
+        {
+            $method = $aliases[$method];
+        }
+
+        $this->method = $method;
 
         try
         {
-            $instance->initConfig();
-
-            $valid_methods = array_merge($class::$METHODS, self::$METHODS);
+            $valid_methods = static::getMergedProperty('METHODS');
 
             if (!in_array($method, $valid_methods))
             {
-                $instance->help();
-                $instance->hr();
-                $instance->error("Invalid method - $method");
+                if ($prompt_when_done)
+                {
+                    $this->warn("Invalid method - $method");
+                    $this->prompt(false, true);
+                }
+                else
+                {
+                    $this->help();
+                    $this->hr();
+                    $this->error("Invalid method - $method");
+                }
             }
 
             $args = [];
-            foreach ($argv as $_arg)
+            foreach ($arg_list as $_arg)
             {
                 if (strpos($_arg, '--') === 0)
                 {
@@ -297,7 +192,7 @@ class Console_Abstract
                         $arg_split[1] = true;
                     }
 
-                    $instance->configure($arg_split[0], $arg_split[1]);
+                    $this->main_tool->configure($arg_split[0], $arg_split[1]);
                 }
                 else
                 {
@@ -305,133 +200,80 @@ class Console_Abstract
                 }
             }
 
-            date_default_timezone_set($instance->timezone);
-
             // Check if running as root - if so, make sure that's OK
-            if ($instance->running_as_root and !$instance->allow_root)
+            if ($this->main_tool->running_as_root and !$this->main_tool->allow_root)
             {
-                if (!in_array($method, self::$ROOT_METHODS))
+                $root_methods = static::getMergedProperty('ROOT_METHODS');
+                if (!in_array($method, $root_methods))
                 {
-                    if (empty($class::$ROOT_METHODS) or !in_array($method, $class::$ROOT_METHODS))
+                    $this->error("Cowardly refusing to run as root. Use --allow-root to bypass this error.", 200);
+                }
+            }
+
+            if ($initial)
+            {
+                date_default_timezone_set($this->main_tool->timezone);
+
+                $this->checkRequirements();
+
+                $this->log('Determined home directory to be ' . $this->main_tool->home_dir);
+
+
+                // Run an update check
+                if ($this->updateCheck(true, true)) // auto:true, output:true
+                {
+                    if ($method != 'update')
                     {
-                        $instance->error("Cowardly refusing to run as root. Use --allow-root to bypass this error.", 200);
+                        $this->sleep(3);
                     }
                 }
             }
 
-            $instance->checkRequirements();
-
-            $instance->log('Determined home directory to be ' . $instance->home_dir);
-
-
-            // Run an update check
-            if ($instance->updateCheck(true, true)) // auto:true, output:true
-            {
-                if ($method != 'update')
-                {
-                    $instance->sleep(3);
-                }
-            }
-
             $call_info = "$class->$method(" . implode(",", $args) . ")";
-            $instance->log("Calling $call_info");
-            $instance->hrl();
+            $this->log("Calling $call_info");
+            $this->hrl();
 
             try {
-                call_user_func_array([$instance, $method], $args);
+                call_user_func_array([$this, $method], $args);
             } catch (ArgumentCountError $e) {
-                static::_run_error($e);
+                $this->_run_error($e, $method);
             } catch (InvalidArgumentException $e) {
-                static::_run_error($e);
+                $this->_run_error($e, $method);
             } catch (Exception $e) {
-                static::_run_error($e);
+                $this->_run_error($e, $method);
             }
 
-            $instance->hrl();
-            $instance->log("$call_info complete");
+            $this->hrl();
+            $this->log("$call_info complete");
 
         } catch (Exception $e) {
-            $instance->error($e->getMessage());
+            $this->error($e->getMessage());
         }
+
+        if ($prompt_when_done) $this->prompt(false, false);
     }
-        protected static function _run_error($e)
+        protected function _run_error($e, $method)
         {
             $error = (get_class($e) == 'Exception') ? $e->getMessage() : "Incorrect usage - see method help below:";
-            $instance->error($error, false);
-            $instance->help($method);
+            $this->error($error, false);
+            $this->help($method);
             exit(500);
         }
 
-    protected $___backup = [
-        "Backup a file or files to the configured backup folder",
-        ["Paths to back up", "string", "required"],
-        ["Whether to output when backup is complete"]
+    protected $___clear = [
+        "Clear the screen",
     ];
-    public function backup($files, $output=true)
+    public function clear()
     {
-        $success = true;
-
-        $files = $this->prepArg($files, []);
-
-        if (empty($this->backup_dir))
-        {
-            $this->warn('Backups are disabled - no backup_dir specified in config', true);
-            return;
-        }
-
-        if (!is_dir($this->backup_dir))
-            mkdir($this->backup_dir, 0755, true);
-
-        foreach ($files as $file)
-        {
-            $this->output("Backing up $file...", false);
-            if (!is_file($file))
-            {
-                $this->br();
-                $this->warn("$file does not exist - skipping", true);
-                continue;
-            }
-
-            $backup_file = $this->backup_dir . DS . basename($file) . '-' . $this->stamp() . '.bak';
-            $this->log(" - copying to $backup_file");
-
-            // Back up target
-            $success = ($success and copy($file, $backup_file));
-            if ($success)
-            {
-                $this->output('successful');
-            }
-            else
-            {
-                $this->br();
-                $this->warn("Failed to back up $file", true);
-                continue;
-            }
-        }
-
-        // Clean up old backups - keep backup_age_limit days worth
-        $this->exec("find \"{$this->backup_dir}\" -mtime +{$this->backup_age_limit} -type f -delete");
-        
-        return $success;
+        $this->main_tool->clear();
     }
 
-    protected $___eval_file = [
-        "Evaluate a php script file, which will have access to all internal methods via '\$this'",
-        ["File to evaluate", "string", "required"]
+    protected $___exit = [
+        "Exit the command prompt",
     ];
-    public function eval_file($file, ...$evaluation_arguments)
+    public function exit()
     {
-        if (!is_file($file))
-        {
-            $this->error("File does not exist, check the path: $file");
-        }
-
-        if (!is_readable($file))
-        {
-            $this->error("File is not readable, check permissions: $file");
-        }
-
-        require_once($file);
+        exit();
     }
 
     protected $___help = [
@@ -443,9 +285,7 @@ class Console_Abstract
         // Specific help?
         if ($specific) return $this->_help_specific($specific);
 
-        $class = get_called_class();
-
-        $methods = array_merge($class::$METHODS, self::$METHODS);
+        $methods = static::getMergedProperty('METHODS');
         sort($methods);
 
         $this->version();
@@ -475,7 +315,7 @@ class Console_Abstract
         $this->output3col("OPTION", "TYPE", "INFO");
         $this->hr('-');
 
-        $hidden_options = array_merge($class::$HIDDEN_CONFIG_OPTIONS, self::$HIDDEN_CONFIG_OPTIONS);
+        $hidden_options = static::getMergedProperty('HIDDEN_CONFIG_OPTIONS');
 
         foreach ($this->getPublicProperties() as $property)
         {
@@ -496,8 +336,28 @@ class Console_Abstract
         $this->output("Use no- to set boolean option to false - eg. --no-stamp-lines");
         if (!$this->verbose)
         {
-            $this->output("Less common options are hidden.  Use --verbose to show ALL options.");
+            $this->output($this->colorize("Less common options are hidden.  Use --verbose to show ALL options.", "yellow"));
         }
+    }
+
+    protected $___prompt = [
+        "Show interactive prompt"
+    ];
+    public function prompt($clear=false, $help=true)
+    {
+        if ($clear) $this->clear();
+
+        if ($help)
+        {
+            $this->hr();
+            $this->output("Enter 'help' to list valid commands");
+        }
+
+        $this->hr();
+        $command_string = $this->input("cmd");
+        $arg_list = explode(" ", $command_string);
+
+        $this->try_calling($arg_list, false, true);
     }
 
         /**
@@ -633,6 +493,1006 @@ class Console_Abstract
 
             return $param;
         }
+
+    /**
+     * Get static property by merging up with partent values
+     */
+    protected static function getMergedProperty($property)
+    {
+        $value = [];
+        $class = get_called_class();
+        while ($class and class_exists($class))
+        {
+            if (isset($class::$$property))
+            {
+                $value = array_merge($value, $class::$$property);
+                $class = get_parent_class($class);
+            }
+        }
+        return array_unique($value);
+    }
+
+    /**
+     * Merge arrays recursively, in the way we expect
+     * Primarily, we are expecting meaningful keys - eg. option arrays, commands/subcommands, etc.
+     *  - Start with array1
+     *  - Check each key - if that key exists in array2, overwrite with array2's value, EXCEPT:
+     *  - If both values are an array, merge the values instead - recursively
+     *  - Last, add keys that are in array2 only
+     */
+    protected function mergeArraysRecursively($array1, $array2)
+    {
+        $merged_array = [];
+        foreach ($array1 as $key => $value1)
+        {
+            if (isset($array2[$key]))
+            {
+                if (is_array($array1[$key]) and is_array($array2[$key]))
+                {
+                    $merged_array[$key] = $this->mergeArraysRecursively($array1[$key], $array2[$key]);
+                }
+                else
+                {
+                    $merged_array[$key] = $array2[$key];
+                    unset($array2[$key]);
+                }
+            }
+            else
+            {
+                $merged_array[$key] = $value1;
+            }
+        }
+        foreach ($array2 as $key => $value2)
+        {
+            $merged_array[$key] = $value2;
+        }
+
+        return $merged_array;
+    }
+
+    /**
+     * Magic handling for subcommands to call main command methods
+     */
+    public function __call($method, $arguments)
+    {
+        $callable = [$this->main_tool, $method];
+        if (is_callable($callable))
+        {
+            return call_user_func_array ($callable, $arguments);
+        }
+
+        throw new Exception("Invalid class method '$method'");
+    }
+
+}
+
+// Note: leave this for packaging ?>
+<?php
+/**
+ * Visual Command type
+ *  - Think visual mode in vim
+ *  - single letter commands, or sequences thereof
+ */
+class Command_Visual extends Command
+{
+    public $commands = [];
+
+    public $reload_function;
+    public $reload_data;
+
+    /**
+     * Constructor
+     */
+    public function __construct($main_tool, $options=[])
+    {
+        parent::__construct($main_tool);
+
+        if (empty($options['reload_function']) or !is_callable($options['reload_function']))
+        {
+            $this->error("Option 'reload_function' is required");
+        }
+
+        $this->reload_function = $options['reload_function'];
+        if (isset($options['reload_data']))
+        {
+            $this->reload_data = $options['reload_data'];
+        }
+
+        $this->commands = [
+            'help' => [
+                'description' => 'Help - list available commands',
+                'keys' => '?',
+                'callback' => [$this, 'help'],
+            ],
+            'reload' => [
+                'description' => 'Reload - refresh list',
+                'keys' => 'r',
+                'callback' => [$this, 'reload'],
+            ],
+            'quit' => [
+                'description' => 'Quit - exit the list',
+                'keys' => 'q',
+                'callback' => [$this, 'quit'],
+            ],
+        ];
+        if (isset($options['commands']))
+        {
+            $this->commands = $this->mergeArraysRecursively($this->commands, $options['commands']);
+        }
+        $this->cleanCommandArray($this->commands);
+    }
+
+    /**
+     * Clean an array of commands
+     *  - Make sure keys are set properly as array of single keys
+     */
+    protected function cleanCommandArray(&$commands)
+    {
+        foreach ($commands as $command_slug => $command_details)
+        {
+            if (is_string($command_details['keys'])) $command_details['keys'] = str_split($command_details['keys']);
+            if (!is_array($command_details['keys'])) $this->error("Invalid command keys for '$command_slug'");
+
+            if (
+                isset($command_details['callback'])
+                and is_array($command_details['callback'])
+                and isset($command_details['callback']['subcommands'])
+            ) {
+                $this->cleanCommandArray($command_details['callback']['subcommands']);
+            }
+
+            $commands[$command_slug] = $command_details;
+        }
+    }
+
+    /**
+     * Prompt for input and run the associated command if valid
+     * @param $commmands - the commands to select from
+     * @return boolean whether command was valid or not
+     */
+    protected function promptAndRunCommand($commands, $show_options=false)
+    {
+        if (!is_array($commands) or empty($commands))
+        {
+            $this->error("Invalid commands passed - expecting array of command definitions");
+        }
+
+        if ($show_options)
+        {
+            foreach ($commands as $key => $details)
+            {
+                $name = $details['description'];
+                $keys = $details['keys'];
+                $this->output( str_pad( implode( ",", $keys) . " ", 15, ".") . " " . $name );
+            }
+        }
+
+        $input = $this->input(true, null, false, 'single', 'hide_input');
+        $matched = false;
+
+        foreach ($commands as $command_slug => $command_details)
+        {
+            $command_name = $command_details['description'];
+            $command_keys = $command_details['keys'];
+            $command_callable = $command_details['callback'];
+
+            if (in_array($input, $command_keys))
+            {
+                $matched = true;
+
+                if ( ! is_callable($command_callable))
+                {
+                    if (is_array($command_callable))
+                    {
+                        if (isset($command_callable['subcommands']))
+                        {
+                            while (true)
+                            {
+                                $this->clear();
+                                $this->hr();
+                                $this->output("$command_name:");
+                                $this->hr();
+                                $continue_loop = $this->promptAndRunCommand($command_callable['subcommands'], true);
+
+                                if (
+                                    $continue_loop === false
+                                    or (isset($command_details['continue']) and $command_details['continue'] === false)
+                                ) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    $this->error("Uncallable method for $input", false, true);
+                    return true;
+                }
+
+                $continue_loop = call_user_func($command_callable, $this);
+
+                // Reload if set
+                if (!empty($command_details['reload']))
+                {
+                    $this->reload();
+                }
+
+                if (
+                    $continue_loop === false
+                    or (isset($command_details['continue']) and $command_details['continue'] === false)
+                ) {
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
+        if (!$matched)
+        {
+            $this->log("Invalid input $input");
+        }
+    }
+
+    /**
+     * Built-in commands
+     */
+
+    // Help
+    public function help($specific=false)
+    {
+        $this->clear();
+        $this->hr();
+        $this->output("Available Commands:");
+        $this->hr();
+        foreach ($this->commands as $command_slug => $command_details)
+        {
+            $command_name = $command_details['description'];
+            $command_keys = $command_details['keys'];
+            $this->output( str_pad( implode( ",", $command_keys) . " ", 15, ".") . " " . $command_name );
+        }
+        $this->hr();
+        $this->input("Hit any key to exit help", null, false, true);
+    }
+
+    // Quit
+    public function quit()
+    {
+        return false; // Back to previous area, basically
+    }
+
+    // Reload
+    public function reload()
+    {
+        return call_user_func($this->reload_function, $this->reload_data, $this);
+    }
+}
+
+// Note: leave this for packaging ?>
+<?php
+/**
+ * Visual command that shows a list of items
+ */
+class Command_Visual_List extends Command_Visual
+{
+    public $list=[];
+    public $list_original=[];
+    public $list_selection=[];
+
+    public $focus=0;
+    public $starting_line=1;
+    public $page_info=[];
+
+    public $multiselect = false;
+    public $template = "{_KEY}: {_VALUE}";
+
+    /**
+     * Constructor
+     */
+    public function __construct($main_tool, $list, $options=[])
+    {
+        $this->setMainTool($main_tool);
+
+        if (empty($list))
+        {
+            $this->error("Empty list", false, true);
+            return false;
+        }
+
+        $this->list_original = $list;
+        $this->list = $list;
+
+        if (isset($options['multiselect']))
+        {
+            $this->multiselect = $options['multiselect'];
+        }
+
+        if (isset($options['template']))
+        {
+            $this->template = $options['template'];
+        }
+
+        $commands = [
+            'filter' => [
+                'description' => 'Filter the list',
+                'keys' => 'f',
+                'callback' => [
+                    'subcommands' => [
+                        'filter_by_text' => [
+                            'description' => 'Text/Regex Search',
+                            'keys' => '/',
+                            'callback' => [$this, 'filter_by_text'],
+                            'continue' => false,
+                        ],
+                        'filter_remove' => [
+                            'description' => 'Remove filters - go back to full list',
+                            'keys' => 'r',
+                            'callback' => [$this, 'filter_remove'],
+                            'continue' => false,
+                        ],
+                    ],
+                ],
+            ],
+            'filter_by_text' => [
+                'description' => 'Search list (filter by text entry)',
+                'keys' => '/',
+                'callback' => [$this, 'filter_by_text'],
+            ],
+            'focus_up' => [
+                'description' => 'Up - move focus up in the list',
+                'keys' => 'k',
+                'callback' => [$this, 'focus_up'],
+            ],
+            'focus_down' => [
+                'description' => 'Down - move focus down in the list',
+                'keys' => 'j',
+                'callback' => [$this, 'focus_down'],
+            ],
+            'focus_top' => [
+                'description' => 'Top - move focus to top of list',
+                'keys' => 'g',
+                'callback' => [$this, 'focus_top'],
+            ],
+            'focus_bottom' => [
+                'description' => 'Bottom - move focus to bottom of list',
+                'keys' => 'G',
+                'callback' => [$this, 'focus_bottom'],
+            ],
+        ];
+
+        if (isset($options['commands']))
+        {
+            $commands = $this->mergeArraysRecursively($commands, $options['commands']);
+        }
+        $options['commands'] = $commands;
+
+        parent::__construct($main_tool, $options);
+    }
+
+    /**
+     * Run the listing subcommand
+     */
+    public function run()
+    {
+        $count = count($this->list);
+
+        $content_to_display=[];
+        $i=0;
+        foreach ($this->list as $key => $item)
+        {
+            // Prep output using template
+            $output = $this->template;
+
+            $key_start = strpos($output, '{_KEY}');
+            if ($key_start !== false)
+            {
+                $output = substr_replace($output, $key, $key_start, 6);
+            }
+
+            $value_start = strpos($output, '{_VALUE}');
+            if ($key_start !== false)
+            {
+                $output = substr_replace($output, $this->stringify($item), $value_start, 8);
+            }
+
+            $this->_fill_item = $item;
+            $content = preg_replace_callback('/\{[^\}]+\}/', [$this, '_fill_item_to_template'], $output );
+            if ($this->focus == $i)
+            {
+                $content = "[*] " . $content;
+                $content = $this->colorize($content , 'blue', 'light_gray', ['bold']);
+            }
+            else
+            {
+                $content = "[ ] " . $content;
+            }
+            $content_to_display[]= $content;
+            $i++;
+        }
+
+        $this->clear();
+        $this->page_info = $this->paginate($content_to_display, [
+            'starting_line' => $this->starting_line,
+        ]);
+
+        $continue_loop = $this->promptAndRunCommand($this->commands);
+
+        if ($continue_loop !== false)
+        {
+            $this->log("Looping!");
+            $this->pause();
+            $this->run();
+        }
+    }
+
+        /**
+         * Used to fill item data into template string
+         *  by preg_replace_callback
+         */
+        protected $_fill_item;
+        protected function _fill_item_to_template ($matches)
+        {
+            $value = "";
+            $format = false;
+
+            $match = $matches[0];
+            $match = substr($match, 1, -1);
+
+            $match_exploded = explode("|", $match);
+            if (count($match_exploded) > 1)
+            {
+                $format = array_pop($match_exploded);
+            }
+            $key_string = array_shift($match_exploded);
+
+            $keys = explode(":", $key_string);
+            $target = $this->_fill_item;
+            while (!empty($keys))
+            {
+                $key = array_shift($keys);
+                if (isset($target[$key]))
+                {
+                    $target = $target[$key];
+                }
+                else
+                {
+                    $keys = [];
+                }
+            }
+            if (is_string($target))
+            {
+                $value = $target;
+            }
+
+            //var_dump($value);
+            if (!empty($format) and !empty($value))
+            {
+                $value = sprintf($format, $value);
+            }
+            //var_dump($value);
+
+            return $value;
+        }
+
+    /**
+     * Built-in commands
+     */
+
+    // Reload
+    public function reload()
+    {
+        $list = parent::reload();
+        $this->list_original = $list;
+        $this->list = $list;
+    }
+
+    // Filter - remove filters
+    public function filter_remove()
+    {
+        $this->list = $this->list_original;
+        $this->focus_top();
+    }
+
+    // Filter - by text/regex (search)
+    public function filter_by_text()
+    {
+        while (true)
+        {
+            $this->clear();
+            $this->hr();
+            $this->output("Filter by Text:");
+            $this->output(" - Case insensive if search string is all lowercase");
+            $this->output(" - Start with / to use RegEx");
+            $this->hr();
+            $search_pattern = $this->input("Enter text", null, false);
+
+            $current_list = $this->list;
+            $filtered_list = [];
+
+            $search_pattern = trim($search_pattern);
+            if (empty($search_pattern))
+            {
+                return;
+            }
+
+            $is_regex = (substr($search_pattern, 0, 1) == '/');
+            $case_insensitive = (!$is_regex and (strtolower($search_pattern) == $search_pattern));
+
+            foreach ($current_list as $item)
+            {
+                $json = json_encode($item);
+                $match = false;
+                if ($is_regex)
+                {
+                    $match = preg_match($search_pattern, $json);
+                }
+                elseif ($case_insensitive)
+                {
+                    $match = ( stripos($json, $search_pattern) !== false );
+                }
+                else
+                {
+                    $match = ( strpos($json, $search_pattern) !== false );
+                }
+
+                if ($match)
+                {
+                    $filtered_list[]= $item;
+                }
+            }
+
+            if (!empty($filtered_list))
+            {
+                // Results found - display as the new current list
+                $this->list = $filtered_list;
+                $this->focus_top();
+                return;
+            }
+            else
+            {
+                // No results - offer to try a new search
+                $this->output("No Results found");
+                $new_search = $this->confirm("Try a new search?", "y", false, true);
+                if ( ! $new_search)
+                {
+                    return;
+                }
+                // Otherwise, will continue the loop
+            }
+        }
+    }
+
+
+    // Focus up/down/top/bottom
+    public function focus_up()
+    {
+        if ($this->focus > 0)
+        {
+            $this->focus--;
+        }
+        $this->page_to_focus();
+    }
+    public function focus_down()
+    {
+        $max_focus = (count($this->list) - 1);
+        if ($this->focus < $max_focus)
+        {
+            $this->focus++;
+        }
+        $this->page_to_focus();
+    }
+    public function focus_top()
+    {
+        $this->focus = 0;
+        $this->page_to_focus();
+    }
+    public function focus_bottom()
+    {
+        $max_focus = (count($this->list) - 1);
+        $this->focus = $max_focus;
+        $this->page_to_focus();
+    }
+
+    /**
+     * Helper functions
+     */
+
+    // Adjust page view to focus
+    public function page_to_focus()
+    {
+        $focus = $this->focus+1;
+        if ($focus < $this->starting_line)
+        {
+            $this->starting_line = $focus;
+        }
+        if ($focus > $this->page_info['ending_line'])
+        {
+            $this->starting_line = ($focus - $this->page_info['page_length']) + 1;
+        }
+    }
+
+    // Get Focused Data
+    public function getFocusedKey()
+    {
+        $list_keys = array_keys($this->list);
+        return $list_keys[$this->focus];
+    }
+    public function getFocusedValue()
+    {
+        $list_values = array_values($this->list);
+        return $list_values[$this->focus];
+    }
+}
+
+// Note: leave this for packaging ?>
+<?php
+/**
+ * Console Abstract to be extended by specific console tools
+ */
+
+// Global Constants
+if (!defined('DS'))
+{
+    define('DS', DIRECTORY_SEPARATOR);
+}
+
+// Either log or display all errors
+error_reporting(E_ALL);
+
+if (defined('ERRORS') and ERRORS)
+{
+    // Enable and show errors
+    echo "\n\n************************************\n";
+    echo "* Displaying all errors & warnings *\n";
+    echo "************************************\n\n";
+    ini_set('display_errors', 1);
+}
+else
+{
+    // Disable PHP Error display
+    ini_set('display_errors', 0);
+}
+
+if (!defined('PACKAGED') or !PACKAGED)
+{
+    $lib_files = scandir(__DIR__ . DS . "lib");
+    foreach ($lib_files as $file)
+    {
+        $path = __DIR__ . DS . "lib" . DS . $file;
+        if (is_file($path))
+        {
+            require_once($path);
+        }
+    }
+}
+
+/**
+ * Console Abstract
+ * Reusable abstract for creating PHP console utilities
+ */
+class Console_Abstract extends Command
+{
+
+    /**
+     * Padding for output
+     */
+    const DEFAULT_HEIGHT = 30; // lines - if not able to dynamically determine
+    const DEFAULT_WIDTH = 130; // characters - if not able to dynamically determine
+    const COL1_WIDTH = 20; // percentage of full width
+    const COL2_WIDTH = 50; // percentage of full width - col1 + col2
+
+    /**
+     * Callable Methods
+     */
+    protected static $METHODS = [
+        'backup',
+        'eval_file',
+        'install',
+        'update',
+        'version',
+    ];
+
+    /**
+     * Methods that are OK to run as root without warning
+     */
+    protected static $ROOT_METHODS = [
+        'help',
+        'install',
+        'update',
+        'version',
+    ];
+
+    /**
+     * Config options that are hidden from help output
+     * - Add config values here that would not typically be overridden by a flag
+     * - Cleans up help output and avoids confusion
+     */
+    protected static $HIDDEN_CONFIG_OPTIONS = [
+        'backup_age_limit',
+        'backup_dir',
+        'browser_exec',
+        'cache_lifetime',
+        'editor_exec',
+        'install_path',
+        'step',
+        'timezone',
+        'update_auto',
+        'update_check_hash',
+        'update_last_check',
+        'update_version_url',
+    ];
+
+	/**
+	 * Config/option defaults
+	 */
+    protected $__allow_root = "OK to run as root";
+    public $allow_root = false;
+
+    protected $__backup_age_limit = ["Age limit of backups to keep- number of days", "string"];
+    public $backup_age_limit = '30';
+
+    protected $__backup_dir = ["Location to save backups", "string"];
+    public $backup_dir = null;
+
+    protected $__browser_exec = ["Command to open links in browser - %s for link placeholder via sprintf"];
+    protected $browser_exec = 'nohup google-chrome "%s" >/dev/null 2>&1 &';
+
+    protected $__cache_lifetime = ["Default time to cache data in seconds"];
+    public $cache_lifetime = 86400; // Default: 24 hours
+
+    protected $__editor_exec = ["Command to open file in editor - %s for filepath placeholder via sprintf"];
+    protected $editor_exec = '/usr/bin/vim "%s" > `tty`';
+
+    protected $__install_path = ["Install path of this tool", "string"];
+	public $install_path = DS . "usr" . DS . "local" . DS . "bin";
+
+    protected $__ssl_check = "Whether to check SSL certificates with curl";
+	public $ssl_check = true;
+
+    protected $__stamp_lines = "Stamp output lines";
+	public $stamp_lines = false;
+
+    protected $__step = "Enable stepping points";
+	public $step = false;
+
+    protected $__timezone = ["Timezone - from http://php.net/manual/en/timezones.", "string"];
+    public $timezone = "US/Eastern";
+
+    /* Default: check every 24 hrs
+        24 * 60 * 60 = 86400
+    */
+    protected $__update_auto = ["How often to automatically check for an update (seconds, 0 to disable)", "int"];
+	public $update_auto = 86400;
+
+    protected $__update_last_check = ["Formatted timestap of last update check", "string"];
+	public $update_last_check = "";
+
+    // Note: this is configurable, and the child class can also set a default
+    //  - empty string = not updatable
+    //  - Tip: if using Github md file, use raw URL for simpler parsing
+    protected $__update_version_url = ["URL to check for latest version number info", "string"];
+	public $update_version_url = "";
+
+    // Note: this is configurable, and the child class can also set a default
+    protected $__update_check_hash = ["Whether to check hash of download when updating", "binary"];
+	public $update_check_hash = true;
+
+    protected $__verbose = "Enable verbose output";
+	public $verbose = false;
+
+    /**
+     * Config paths
+     */
+    protected $config_dir = null;
+    protected $config_file = null;
+    protected $home_dir = null;
+
+    /**
+     * Stuff
+     * Child class can override all as needed
+     */
+    protected $config_initialized = false;
+    protected $config_to_save = null;
+    protected $dt = null;
+    protected $run_stamp = '';
+    protected $method = '';
+
+    protected $logged_in_user = '';
+    protected $current_user = '';
+    protected $logged_in_as_root = false;
+    protected $running_as_root = false;
+    protected $is_windows = false;
+
+    protected $minimum_php_major_version = '7';
+
+    // Update behavior
+    // - DOWNLOAD - download and install update
+    // - Other - show text as a custom message
+    protected $update_behavior='DOWNLOAD';
+
+    // Set this to false in child class to disable updates
+    protected $update_pattern_standard = "~
+        download\ latest\ version \s*
+        \( \s*
+            ( [\d.]+ )
+        \s* \) \s* :
+        \s* ( \S* ) \s*$
+    ~ixm";
+
+    // Set this to false in child class to disable hash check
+    protected $hash_pattern_standard = "~
+        latest\ version\ hash \s*
+        \( \s*
+            ( .+ )
+        \s* \) \s* :
+        \s* ([0-9a-f]+)
+    ~ixm";
+
+    // True to use the standard
+    // - otherwise, specify pattern string as needed
+    protected $update_version_pattern = [ true, 1 ];
+    protected $update_download_pattern = [ true, 2 ];
+    protected $update_hash_algorithm_pattern = [ true, 1 ];
+    protected $update_hash_pattern = [ true, 2 ];
+
+    protected $update_exists = null;
+    protected $update_version = "0";
+    protected $update_url = "";
+
+    // This is used when packaging via pcon, for convenience,
+    //  but will be read dynamically from the download page
+    //  to check the downloaded file
+    protected $update_hash_algorithm = "md5";
+    protected $update_hash = "";
+    
+    /**
+     * Constructor - set up basics
+     */
+    public function __construct()
+    {
+        date_default_timezone_set($this->timezone);
+        $this->run_stamp = $this->stamp();
+
+        exec('logname', $logged_in_user, $return);
+        if ($return == 0 and !empty($logged_in_user))
+        {
+            $this->logged_in_user = trim(implode($logged_in_user));
+        }
+        $this->logged_in_as_root = ($this->logged_in_user == 'root');
+
+        exec('whoami', $current_user, $return);
+        if ($return == 0 and !empty($current_user))
+        {
+            $this->current_user = trim(implode($current_user));
+        }
+        $this->running_as_root = ($this->current_user == 'root');
+
+        $this->is_windows = (strtolower(substr(PHP_OS, 0, 3)) === 'win');
+
+        parent::__construct($this);
+    }
+
+    /**
+     * Check requirements
+     * - Extend in child if needed and pass problems to parent
+     */
+    protected function checkRequirements($problems=[])
+    {
+        $this->log("PHP Version: " . PHP_VERSION);
+        $this->log("OS: " . PHP_OS);
+        $this->log("Windows: " . ($this->is_windows ? "Yes" : "No"));
+
+        $php_version = explode('.', PHP_VERSION);
+        $major = (int) $php_version[0];
+        if ($major < $this->minimum_php_major_version)
+        {
+            $problems[]= "This tool is not well tested below PHP " . $this->minimum_php_major_version .
+                " - please consider upgrading to PHP " . $this->minimum_php_major_version . ".0 or higher";
+        }
+
+        if (!function_exists('curl_version'))
+        {
+            $problems[]= "This tool requires curl for many features such as update checks and installs - please install php-curl";
+        }
+
+        if (!empty($problems))
+        {
+            $this->error("There are some problems with requirements: \n - " . implode("\n - ", $problems), false, true);
+        }
+    }
+
+    /**
+     * Run - parse args and run method specified
+     */
+    public static function run($arg_list)
+    {
+        $class = get_called_class();
+
+        $script = array_shift($arg_list);
+
+        $instance = new $class();
+
+        try
+        {
+            $instance->initConfig();
+
+            $instance->try_calling($arg_list, true);
+
+        } catch (Exception $e) {
+            $instance->error($e->getMessage());
+        }
+    }
+
+    protected $___backup = [
+        "Backup a file or files to the configured backup folder",
+        ["Paths to back up", "string", "required"],
+        ["Whether to output when backup is complete"]
+    ];
+    public function backup($files, $output=true)
+    {
+        $success = true;
+
+        $files = $this->prepArg($files, []);
+
+        if (empty($this->backup_dir))
+        {
+            $this->warn('Backups are disabled - no backup_dir specified in config', true);
+            return;
+        }
+
+        if (!is_dir($this->backup_dir))
+            mkdir($this->backup_dir, 0755, true);
+
+        foreach ($files as $file)
+        {
+            $this->output("Backing up $file...", false);
+            if (!is_file($file))
+            {
+                $this->br();
+                $this->warn("$file does not exist - skipping", true);
+                continue;
+            }
+
+            $backup_file = $this->backup_dir . DS . basename($file) . '-' . $this->stamp() . '.bak';
+            $this->log(" - copying to $backup_file");
+
+            // Back up target
+            $success = ($success and copy($file, $backup_file));
+            if ($success)
+            {
+                $this->output('successful');
+            }
+            else
+            {
+                $this->br();
+                $this->warn("Failed to back up $file", true);
+                continue;
+            }
+        }
+
+        // Clean up old backups - keep backup_age_limit days worth
+        $this->exec("find \"{$this->backup_dir}\" -mtime +{$this->backup_age_limit} -type f -delete");
+        
+        return $success;
+    }
+
+    protected $___eval_file = [
+        "Evaluate a php script file, which will have access to all internal methods via '\$this'",
+        ["File to evaluate", "string", "required"]
+    ];
+    public function eval_file($file, ...$evaluation_arguments)
+    {
+        if (!is_file($file))
+        {
+            $this->error("File does not exist, check the path: $file");
+        }
+
+        if (!is_readable($file))
+        {
+            $this->error("File is not readable, check permissions: $file");
+        }
+
+        require_once($file);
+    }
 
     protected $___install = [
         "Install a packaged PHP console tool",
@@ -856,7 +1716,8 @@ class Console_Abstract
             {
                 $this->log($update_contents);
                 $this->log($this->update_version_pattern[0]);
-                $this->error('Issue with update version check - pattern not found at ' . $this->update_version_url);
+                $this->error('Issue with update version check - pattern not found at ' . $this->update_version_url, null, true);
+                return false;
             }
             $index = $this->update_version_pattern[1];
             $this->update_version = $match[$index];
@@ -891,7 +1752,8 @@ class Console_Abstract
             }
             if (!preg_match($this->update_download_pattern[0], $update_contents, $match))
             {
-                $this->error('Issue with update download check - pattern not found at ' . $this->update_version_url);
+                $this->error('Issue with update download check - pattern not found at ' . $this->update_version_url, null, true);
+                return false;
             }
             $index = $this->update_download_pattern[1];
             $this->update_url = $match[$index];
@@ -981,6 +1843,7 @@ class Console_Abstract
 	 */
 	public function error($data, $code=500, $prompt_to_continue=false)
 	{
+        $this->br();
         $this->hr('!');
 		$this->output('ERROR: ', false);
 		$this->output($data);
@@ -1007,6 +1870,7 @@ class Console_Abstract
 	 */
 	public function warn($data, $prompt_to_continue=false)
 	{
+        $this->br();
         $this->hr('*');
 		$this->output('WARNING: ', false);
 		$this->output($data, true, false);
@@ -1014,6 +1878,7 @@ class Console_Abstract
 
         if ($prompt_to_continue)
         {
+            $this->log("Getting input to continue");
             $yn = $this->input("Continue? (y/n)", 'n', false, true);
             if (!in_array($yn, ['y', 'Y']))
             {
@@ -1038,6 +1903,51 @@ class Console_Abstract
      */
     public function output($data, $line_ending=true, $stamp_lines=null)
     {
+        $data = $this->stringify($data);
+
+        $stamp_lines = is_null($stamp_lines) ? $this->stamp_lines : $stamp_lines;
+		if ($stamp_lines)
+			echo $this->stamp() . ' ... ';
+
+		echo $data . ($line_ending ? "\n" : "");
+    }
+
+    /**
+     * Progress Bar Output
+     */
+    public function outputProgress($count, $total, $description = "remaining")
+    {
+        if (!$this->verbose)
+        {
+            if ($count > 0)
+            {
+                // Set cursor to first column
+                echo chr(27) . "[0G";
+                // Set cursor up 2 lines
+                echo chr(27) . "[2A";
+            }
+
+            $full_width = $this->getTerminalWidth();
+            $pad = $full_width - 1;
+            $bar_count = floor(($count * $pad) / $total);
+            $output = "[";
+            $output = str_pad($output, $bar_count, "|");
+            $output = str_pad($output, $pad, " ");
+            $output.= "]";
+            $this->output($output);
+            $this->output(str_pad("$count/$total", $full_width, " ", STR_PAD_LEFT));
+        }
+        else
+        {
+            $this->output("$count/$total $description");
+        }
+    }
+
+    /**
+     * Stringify some data for output
+     */
+    public function stringify($data)
+    {
         if (is_object($data) or is_array($data))
         {
             $data = print_r($data, true);
@@ -1046,18 +1956,65 @@ class Console_Abstract
         {
             $data = $data ? "(Bool) True" : "(Bool) False";
         }
+        elseif (is_null($data))
+        {
+            $data = "(NULL)";
+        }
+        elseif (is_int($data))
+        {
+            $data = "(int) $data";
+        }
         else if (!is_string($data))
         {
             ob_start();
             var_dump($data);
             $data = ob_get_clean();
         }
+        $data = trim($data, " \t\n\r\0\x0B");
+        return $data;
+    }
 
-        $stamp_lines = is_null($stamp_lines) ? $this->stamp_lines : $stamp_lines;
-		if ($stamp_lines)
-			echo $this->stamp() . ' ... ';
+    /**
+     * Colorize a string for output to console
+     *  - https://en.wikipedia.org/wiki/ANSI_escape_code
+     */
+    public function colorize($string, $foreground=null, $background=null, $other=[])
+    {
+        $colored_string = "";
+        $colored = false;
 
-		echo $data . ($line_ending ? "\n" : "");
+        foreach (['foreground', 'background', 'other'] as $type)
+        {
+            if (!is_null($$type))
+            {
+                if (!is_array($$type))
+                {
+                    $$type = [$$type];
+                }
+
+                foreach ($$type as $value_name)
+                {
+                    if (isset(CONSOLE_COLORS::$$type[$value_name]))
+                    {
+                        $colored_string .= "\033[" . CONSOLE_COLORS::$$type[$value_name] . "m";
+                        $colored = true;
+                    }
+                    else
+                    {
+                        $this->warn("Invalid '$type' color specification - " . $value_name);
+                    }
+                }
+            }
+        }
+
+        $colored_string.= $string;
+
+        if ($colored)
+        {
+            $colored_string.="\033[0m";
+        }
+
+        return $colored_string;
     }
 
     /**
@@ -1219,16 +2176,33 @@ class Console_Abstract
 
     /**
      * Confirm yes/no
-     * @param $message to show - yes/no question
-     * @param $default (y) default if no input
+     * @param Same params as input - see descriptions there
      * @return (bool) true/false
      */
-    public function confirm($message, $default='y')
+    public function confirm($message, $default='y', $required=false, $single=true, $single_hide=false)
     {
-        $yn = $this->input($message, $default);
+        $yn = $this->input($message, $default, $required, $single, $single_hide);
 
         // True if first letter of response is y or Y
         return strtolower(substr($yn,0,1)) == 'y';
+    }
+
+    /**
+     * Edit some text in external editor
+     * @param $text to edit
+     */
+    public function edit($text="", $filename=null)
+    {
+        if (is_null($filename))
+        {
+            $filename = "edit_" . date("YmdHis") . ".txt";
+        }
+        $filepath = $this->setTempContents($filename, $text);
+
+        $command = sprintf($this->editor_exec, $filepath);
+        $this->exec($command, true);
+
+        return $this->getTempContents($filename);
     }
 
     /**
@@ -1237,9 +2211,10 @@ class Console_Abstract
      * @param $default if no input
      * @param $required - wether input is required
      * @param $single - prompt for single character (vs waiting for enter key)
+     * @param $single_hide - hide input for single character (is this working?)
      * @return input text or default
      */
-    public function input($message=false, $default=null, $required=false, $single=false)
+    public function input($message=false, $default=null, $required=false, $single=false, $single_hide=false)
     {
         if ($message)
         {
@@ -1257,15 +2232,15 @@ class Console_Abstract
             if ($message) $this->output($message, false);
             if ($single)
             {
+                $single_hide = $single_hide ? ' -s' : '';
                 if ($this->is_windows)
                 {
-                    $line = strtolower( trim( `bash -c "read -n1 -t10 CHAR && echo \$CHAR"` ) );
+                    $line = trim( `bash -c "read$single_hide -n1 CHAR && echo \$CHAR"` );
                 }
                 else
                 {
-                    $line = strtolower( trim( `bash -c 'read -n1 -t10 CHAR && echo \$CHAR'` ) );
+                    $line = trim( `bash -c 'read$single_hide -n1 CHAR && echo \$CHAR'` );
                 }
-                $this->output('');
             }
             else
             {
@@ -1399,7 +2374,7 @@ class Console_Abstract
                 $config = json_decode($json, true);
                 if (empty($config))
                 {
-                    $this->error("Likely Syntax Error: $config_file");
+                    $this->error("Likely syntax error: $config_file");
                 }
                 foreach ($config as $key => $value)
                 {
@@ -1637,6 +2612,283 @@ class Console_Abstract
         return $response;
     }
 
+    // Update arguments for curl URL
+    public function updateCurlArgs($ch, $args, $overwrite=false)
+    {
+        // Get info from previous curl
+        $curl_info = curl_getinfo($ch);
+
+        // Parse out URL and query params
+        $url = $curl_info['url'];
+
+        $url_parsed = parse_url($url);
+        if (empty($url_parsed['query']))
+        {
+            $query = [];
+        }
+        else
+        {
+            parse_str($url_parsed['query'], $query);
+        }
+
+        // Set new args
+        foreach ($args as $key=>$value)
+        {
+            if (!isset($query[$key]) or $overwrite)
+            {
+                $query[$key] = $value;
+            }
+        }
+
+        // Build new URL
+        $new_url =
+            $url_parsed['scheme'] .
+            "://" .
+            $url_parsed['host'] .
+            $url_parsed['path'] .
+            "?" .
+            http_build_query($query);
+        $this->log($new_url);
+        curl_setopt($ch, CURLOPT_URL, $new_url);
+    }
+
+    /**
+     * Interact with cache files
+     */
+    public function getCacheContents($subpath, $expiration=null)
+    {
+        $expiration = $expiration ?? $this->cache_lifetime;
+
+        $config_dir = $this->getConfigDir();
+        $cache_dir = $config_dir . DS . 'cache';
+        $subpath = is_array($subpath) ? implode(DS, $subpath) : $subpath;
+
+        $cache_file = $cache_dir . DS . $subpath;
+        $contents=false;
+
+        if (is_file($cache_file))
+        {
+            $this->log("Cache file exists ($cache_file) - checking age");
+            $cache_modified = filemtime($cache_file);
+            $now = time();
+            $cache_age = $now - $cache_modified;
+            if ($cache_age < $expiration)
+            {
+                $this->log("New enough - reading from cache file ($cache_file)");
+                $contents = file_get_contents($cache_file);
+                if ($contents === false)
+                {
+                    $this->warn("Failed to read cache file ($cache_file) - possible permissions issue", true);
+                }
+            }
+        }
+
+        return $contents;
+    }
+    public function setCacheContents($subpath, $contents)
+    {
+        $config_dir = $this->getConfigDir();
+        $cache_dir = $config_dir . DS . 'cache';
+        $subpath = is_array($subpath) ? implode(DS, $subpath) : $subpath;
+
+        $cache_file = $cache_dir . DS . $subpath;
+        $cache_dir = dirname($cache_file);
+
+        if (!is_dir($cache_dir))
+        {
+            mkdir($cache_dir, 0755, true);
+        }
+
+        $written = file_put_contents($cache_file, $contents);
+        if ($written === false)
+        {
+            $this->warn("Failed to write to cache file ($cache_file) - possible permissions issue", true);
+            return false;
+        }
+
+        return $cache_file;
+    }
+
+    /**
+     * Interact with temp files
+     */
+    public function getTempContents($subpath)
+    {
+        $config_dir = $this->getConfigDir();
+        $temp_dir = $config_dir . DS . 'temp';
+        $subpath = is_array($subpath) ? implode(DS, $subpath) : $subpath;
+
+        $temp_file = $temp_dir . DS . $subpath;
+        $contents=false;
+
+        if (is_file($temp_file))
+        {
+            $this->log("Temp file exists ($temp_file) - reading from temp file");
+            $contents = file_get_contents($temp_file);
+            if ($contents === false)
+            {
+                $this->warn("Failed to read temp file ($temp_file) - possible permissions issue", true);
+            }
+        }
+
+        return $contents;
+    }
+    public function setTempContents($subpath, $contents)
+    {
+        $config_dir = $this->getConfigDir();
+        $temp_dir = $config_dir . DS . 'temp';
+        $subpath = is_array($subpath) ? implode(DS, $subpath) : $subpath;
+
+        $temp_file = $temp_dir . DS . $subpath;
+        $temp_dir = dirname($temp_file);
+
+        if (!is_dir($temp_dir))
+        {
+            mkdir($temp_dir, 0755, true);
+        }
+
+        $written = file_put_contents($temp_file, $contents);
+        if ($written === false)
+        {
+            $this->warn("Failed to write to temp file ($temp_file) - possible permissions issue", true);
+            return false;
+        }
+
+        return $temp_file;
+    }
+
+    /**
+     * Paginate some content for display on terminal
+     */
+    public function paginate($content, $options=[])
+    {
+        $options = array_merge([
+            'starting_line' => 1,
+            'starting_column' => 1, // todo
+            'wrap' => false,
+            'line_buffer' => 1,
+            'output' => true,
+            'include_page_info' => true,
+        ], $options);
+
+        // Split into lines if needed
+        if (is_string($content))
+        {
+            $content = preg_split("/\r\n|\n|\r/", $content);
+        }
+
+        $max_width = $this->getTerminalWidth();
+
+        // Pre-wrap lines if specified, to make sure pagination works based on real number of lines
+        if ($options['wrap'])
+        {
+            $wrapped_content = [];
+            foreach ($content as $line)
+            {
+                while (strlen($line) > $max_width)
+                {
+                    $wrapped_content[]= substr($line, 0, $max_width);
+                    $line = substr($line, $max_width);
+                }
+                $wrapped_content[]= $line;
+            }
+            $content = $wrapped_content;
+        }
+
+        $content_length = count($content);
+
+        $max_height = $this->getTerminalHeight();
+        $max_height = $max_height - $options['line_buffer'];
+        $max_height = $max_height - 2; // for start/end line breaks
+        if ($options['include_page_info'])
+        {
+            $max_height = $max_height - 2; // for page info and extra line break
+        }
+
+        $are_prev = false;
+        if ($options['starting_line'] > 1)
+        {
+            $are_prev = true;
+        }
+
+        $are_next = false;
+        if (($options['starting_line'] + $max_height - 1) < $content_length)
+        {
+            $are_next = true;
+        }
+
+        $height = 0;
+        $output = [];
+
+        // Starting line break
+        if ($are_prev)
+        {
+            $output[]= $this->colorize(str_pad("==[MORE ABOVE]", $max_width, "="), 'green', null, 'bold');
+        }
+        else
+        {
+            $output[]= str_pad("", $max_width, "=");
+        }
+
+        if (!is_array($content)) $content = explode("\n");
+        $content = array_values($content);
+
+        $l = $options['starting_line'] - 1;
+        $final_line = $options['starting_line'];
+        while ($height < $max_height and $l < ($content_length))
+        {
+            $final_line = $l + 1;
+            $line = $content[$l];
+
+            if (!is_string($line)) $this->error("Bad type for line $l of content - string expected");
+            if (strlen($line) > $max_width)
+            {
+                if ($options['wrap'])
+                {
+                    $this->error("Something wrong with the following line - wrap was on, but it's still too long", false);
+                    $this->output($line);
+                    $this->error("Aborting");
+                }
+
+                $line = substr($line, 0, $max_width);
+            }
+            $output[]= $line;
+
+            $l++;
+            $height++;
+        }
+
+        // Ending line break
+        if ($are_next)
+        {
+            $output[]= $this->colorize(str_pad("==[MORE BELOW]", $max_width, "="), 'green', null, 'bold');
+        }
+        else
+        {
+            $output[]= str_pad("", $max_width, "=");
+        }
+
+        if ($options['include_page_info'])
+        {
+            $output[]= str_pad($options['starting_line'] . " - " . $final_line . " of " . $content_length . " items", $max_width, " ");
+            $output[]= str_pad("", $max_width, "=");
+        }
+
+        $output = implode("\n", $output);
+
+        if ($options['output'])
+        {
+            echo $output;
+        }
+
+        return [
+            'output' => $output,
+            'starting_line' => $options['starting_line'],
+            'page_length' => $max_height,
+            'ending_line' => min(($options['starting_line'] + $max_height) - 1, $content_length),
+        ];
+    }
+
     /**
      * Get parameters for a given method
      */
@@ -1690,6 +2942,30 @@ class Console_Abstract
         }
     }
 
+    protected $_terminal_height = null;
+    protected function getTerminalHeight($fresh=false)
+    {
+        if (is_null($this->_terminal_height))
+        {
+            exec("tput lines", $output, $return);
+
+            if (
+                $return
+                or empty($output)
+                or empty($output[0])
+                or !is_numeric($output[0])
+            ){
+                $this->_terminal_height = static::DEFAULT_HEIGHT;
+            }
+            else
+            {
+                $this->_terminal_height = (int) $output[0];
+            }
+        }
+
+        return $this->_terminal_height;
+    }
+
     protected $_terminal_width = null;
     protected function getTerminalWidth($fresh=false)
     {
@@ -1714,6 +2990,11 @@ class Console_Abstract
         return $this->_terminal_width;
     }
 
+    // Prevent infinite loop of magic method handling
+    public function __call($method, $arguments)
+    {
+        throw new Exception("Invalid method '$method'");
+    }
 }
 
 // For working locally
@@ -2074,6 +3355,31 @@ class PSSH_Config
     }
 
     /**
+     * Delete hosts by alias
+     * @param $alias
+     */
+    public function deleteHost($alias)
+    {
+        if (!empty($alias) and isset($this->data['hosts'][$alias]))
+        {
+            unset($this->data['hosts'][$alias]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Set a host by alias with new data
+     * @param $alias - to replace
+     * @param $data - to replace with
+     */
+    public function setHost($alias, $data)
+    {
+        $this->data['hosts'][$alias] = $data;
+    }
+
+    /**
      * Get hosts by hostname, or full map
      * @param $hostname - leave out to return all
      */
@@ -2339,7 +3645,12 @@ class PSSH_Config
     public function search($termstring)
     {
         $termstring = strtolower(trim($termstring));
-        if(empty($termstring)) $this->error('Must enter search term(s)');
+
+        // No search - return all hosts
+        if(empty($termstring))
+        {
+            return $this->data['hosts'];
+        }
 
         $terms = explode(" ", $termstring);
         $terms = array_map('trim', $terms);
@@ -2410,7 +3721,7 @@ class PSSH_Config
                 // - we are making the bold assumption that there are less than 1 billion host entries
                 $levity = ($levity * 1000000000) + $h;
 
-                $results[$levity] = $this->writeSSHHost($host);
+                $results[$levity] = $host;
             }
             
             $h++;
@@ -2620,7 +3931,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.1.1";
+    const VERSION = "2.2.0";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -2631,9 +3942,12 @@ class PSSH extends Console_Abstract
     protected static $METHODS = [
         'add',
         'clean',
+        'edit_host',
+        'delete_host',
         'export',
         'import',
         'init_host',
+        'list',
         'merge',
         'search',
         'sync',
@@ -2852,6 +4166,122 @@ class PSSH extends Console_Abstract
         $this->output('Import complete - see json in ' . $target);
 	}
 
+    protected $___delete_host = [
+        "Delete host",
+        ["Alias of host to delete", "string", "required"],
+        ["Specific JSON file(s) to delete from - defaults to delete from ALL files in json-config-paths", "string"],
+    ];
+    public function delete_host($alias, $paths=null) {
+
+        $paths = $this->prepArg($paths, $this->json_config_paths);
+        
+        // Sync before - to get latest data
+        $this->sync();
+
+        $host_json = false;
+
+        foreach ($paths as $config_path)
+        {
+            $config = new PSSH_Config($this);
+            $config->readJSON($config_path);
+
+            if ($config->deleteHost($alias))
+            {
+                // Backup, clean, save json
+                $this->backup($config_path);
+                $config->clean();
+                $config->writeJson($config_path);
+            }
+        }
+
+        // write out ssh config
+        $this->export();
+
+        $this->sync();
+
+        $this->hr();
+        $this->output('Done!');
+        return true;
+    }
+
+    protected $___edit_host = [
+        "Edit host - modify config in your editor",
+        ["Alias of host", "string", "required"],
+        ["Specific JSON file(s) to edit - defaults to first found in json-config-paths that contains the host alias", "string"],
+    ];
+    public function edit_host($alias, $paths=null) {
+        $paths = $this->prepArg($paths, $this->json_config_paths);
+        
+        // Sync before - to get latest data
+        $this->sync();
+
+        $host_json = false;
+
+        foreach ($paths as $config_path)
+        {
+            $config = new PSSH_Config($this);
+            $config->readJSON($config_path);
+            $host_data = $config->getHosts($alias);
+            if (!empty($host_data) and !empty($host_data[0]))
+            {
+                $host_data = $host_data[0];
+                $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
+                break;
+            }
+        }
+
+        if (empty($host_json))
+        {
+            $this->error("Host '$alias' not found in config files");
+        }
+
+        $original_json = $host_json;
+
+        while (true)
+        {
+            $host_json = $this->edit($host_json, $alias . ".json");
+            $host_data = json_decode($host_json, true);
+            if (empty($host_data))
+            {
+                $this->warn("Invalid JSON - check your syntax");
+                $continue = $this->confirm("Keep editing?");
+                if ( ! $continue )
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // Test for actual changes
+        $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
+        if ($host_json == $original_json)
+        {
+            // No actual change, no need to update
+            return false;
+        }
+
+        $config->setHost($alias, $host_data);
+
+        // Backup, clean, save json
+        $this->backup($config_path);
+        $config->clean();
+
+        $config->writeJson($config_path);
+
+        // write out ssh config
+        $this->export();
+
+        $this->sync();
+
+        $this->hr();
+        $this->output('Done!');
+        return true;
+    }
+
     protected $___init_host = [
         "Initialize host - interactive, or specify options",
         ["Alias of host", "string", "required"],
@@ -2990,27 +4420,66 @@ ____KEYS____;
         }
         else
         {
-            $count = count($results);
-            $this->hr();
-            $this->output("Found $count total matches: ");
-            $this->hr();
-
-            foreach ($results as $r => $result)
-            {
-                if ($r > 0 and $r%5 == 0)
-                {
-                    $this->hr();
-                    $key = $this->input("[ c - SHOW MORE | q - QUIT ]", 'c', false, true);
-                    if ($key == 'q')
-                    {
-                        break;
-                    }
-                    $this->hr();
-                }
-                $this->output($result, false);
-            }
-            $this->hr();
+            $list = new Command_Visual_List($this, $results,
+                [
+                    'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+                    'reload_function' => function ($reload_data) {
+                        $config = new PSSH_Config($this);
+                        $config->readJSON($reload_data['paths']);
+                        return $config->search($reload_data['terms']);
+                    },
+                    'reload_data' => [
+                        'paths' => $paths,
+                        'terms' => $terms,
+                    ],
+                    'commands' => [
+                        'init_host' => [
+                            'description' => 'Initialize the focused host',
+                            'keys' => 'i',
+                            'callback' => function ($list_instance)
+                            {
+                                $focused_value = $list_instance->getFocusedValue();
+                                $this->init_host($focused_value['pssh']['alias']);
+                            },
+                        ],
+                        'delete_host' => [
+                            'description' => 'Delete the focused host',
+                            'keys' => 'd',
+                            'callback' => function ($list_instance)
+                            {
+                                $focused_value = $list_instance->getFocusedValue();
+                                $host_alias = $focused_value['pssh']['alias'];
+                                if ($this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n"))
+                                {
+                                    $this->delete_host($host_alias);
+                                }
+                            },
+                            'reload' => true,
+                        ],
+                        'edit_host' => [
+                            'description' => 'Edit the focused host',
+                            'keys' => 'e',
+                            'callback' => function ($list_instance)
+                            {
+                                $focused_value = $list_instance->getFocusedValue();
+                                $this->edit_host($focused_value['pssh']['alias']);
+                            },
+                            'reload' => true,
+                        ],
+                    ],
+                ]
+            ); 
+            $list->run();
         }
+    }
+
+    protected $___list = [
+        "List all hosts",
+        ["JSON config path(s) to list - defaults to json-config-paths", "string"],
+    ];
+    public function list($paths=null)
+    {
+        $this->search($paths);
     }
 
     /**

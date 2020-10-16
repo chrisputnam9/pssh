@@ -9,7 +9,12 @@ if (!defined('ERRORS')) define('ERRORS', true);
 if (!defined('PACKAGED')) define('PACKAGED', false);
 
 # Path to pcon console_abstract.php
-if (!defined('CONSOLE_ABSTRACT_PATH')) define('CONSOLE_ABSTRACT_PATH', '/home/chris/dev/personal/pcon/src/console_abstract.php');
+if (!defined('CONSOLE_ABSTRACT_PATH')) define('CONSOLE_ABSTRACT_PATH',
+    __DIR__ . DIRECTORY_SEPARATOR .
+    'pcon' .DIRECTORY_SEPARATOR .
+    'src' .DIRECTORY_SEPARATOR .
+    'console_abstract.php'
+);
 
 # Paths to other includes
 $src_includes = array(

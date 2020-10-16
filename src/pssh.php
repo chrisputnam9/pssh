@@ -312,7 +312,7 @@ class PSSH extends Console_Abstract
 
         while (true)
         {
-            $host_json = $this->edit($host_json, $alias . ".json");
+            $host_json = $this->edit($host_json, $alias . ".json", null, "modify");
             $host_data = json_decode($host_json, true);
             if (empty($host_data))
             {

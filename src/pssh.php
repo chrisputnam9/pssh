@@ -312,8 +312,8 @@ class PSSH extends Console_Abstract
 
         while (true)
         {
-            $host_json = $this->edit($host_json, $alias . ".json", null, "modify");
-            $host_data = json_decode($host_json, true);
+            $host_json = $this->edit($host_json, $alias . ".json", "modify");
+            $host_data = $this->json_decode($host_json, ['assoc' => true, 'keepWsc' => false]);
             if (empty($host_data))
             {
                 $this->warn("Invalid JSON - check your syntax");

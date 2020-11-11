@@ -618,7 +618,7 @@ class PSSH_Config
                 // - we are making the bold assumption that there are less than 1 billion host entries
                 $levity = ($levity * 1000000000) + $h;
 
-                $results[$levity] = $host;
+                $results[$levity] = [$alias, $host];
             }
             
             $h++;
@@ -626,7 +626,16 @@ class PSSH_Config
 
         krsort($results);
 
-        return array_values($results);
+        // Re-key by alias
+        $return = [];
+        foreach ($results as $result)
+        {
+            $alias = $result[0];
+            $host = $result[1];
+            $return[$alias] = $host;
+        }
+
+        return $return;
     }
 
     /**

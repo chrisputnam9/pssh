@@ -511,8 +511,8 @@ ____KEYS____;
                             'keys' => 'i',
                             'callback' => function ($list_instance)
                             {
-                                $focused_value = $list_instance->getFocusedValue();
-                                $this->init_host($focused_value['pssh']['alias']);
+                                $focused_key = $list_instance->getFocusedKey();
+                                $this->init_host($focused_key);
                             },
                         ],
                         'delete_host' => [
@@ -520,8 +520,8 @@ ____KEYS____;
                             'keys' => 'd',
                             'callback' => function ($list_instance)
                             {
-                                $focused_value = $list_instance->getFocusedValue();
-                                $host_alias = $focused_value['pssh']['alias'];
+                                $focused_key = $list_instance->getFocusedKey();
+                                $host_alias = $focused_key;
                                 if ($this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n"))
                                 {
                                     $this->delete_host($host_alias);
@@ -534,8 +534,8 @@ ____KEYS____;
                             'keys' => 'e',
                             'callback' => function ($list_instance)
                             {
-                                $focused_value = $list_instance->getFocusedValue();
-                                $this->edit_host($focused_value['pssh']['alias']);
+                                $focused_key = $list_instance->getFocusedKey();
+                                $this->edit_host($focused_key);
                             },
                             'reload' => true,
                         ],

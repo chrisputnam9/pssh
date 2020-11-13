@@ -318,7 +318,7 @@ class PSSH_Config
             {
                 $raw = file_get_contents($this->data['pssh']['team_keys']);
 
-                $data = json_decode($raw, true);
+                $data = $this->json_decode($raw, true);
                 if ($data)
                 {
                     $this->team_keys = $data;
@@ -426,6 +426,9 @@ class PSSH_Config
             }
 
             $json = file_get_contents($path);
+
+            $this->log("Decoding data from $path...");
+            // $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
             $decoded = json_decode($json, true);
             if (empty($decoded))
             {
@@ -644,7 +647,16 @@ class PSSH_Config
      */
     public function writeJSON($path)
     {
-		$json = json_encode($this->data, JSON_PRETTY_PRINT);
+        /*
+        if (preg_match("/.hjson$/", $path))
+        {
+            $json = $this->json_encode($this->data);
+        }
+        else
+        {
+         */
+            $json = json_encode($this->data, JSON_PRETTY_PRINT);
+        //}
 		file_put_contents($path, $json);
     }
 
@@ -740,18 +752,6 @@ class PSSH_Config
     }
 
     /**
-     * Pass through functions for shell
-     */
-    public function __call($method, $arguments)
-    {
-        $shell_call = [$this->shell, $method];
-        if (is_callable($shell_call))
-        {
-            return call_user_func_array($shell_call, $arguments);
-        }
-    }
-
-    /**
      * Make sure alias is unique, add 1/2/3, etc as needed to ensure
      */
     public function autoAlias($alias)
@@ -828,6 +828,18 @@ class PSSH_Config
         return $hostname;
     }
 
+    /**
+     * Pass through functions for shell
+     */
+    public function __call($method, $arguments)
+    {
+        $shell_call = [$this->shell, $method];
+        if (is_callable($shell_call))
+        {
+            $this->shell->log(" __call: Attempting to call $method on separate class...");
+            return call_user_func_array($shell_call, $arguments);
+        }
+    }
 }
 PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
 ?>

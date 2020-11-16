@@ -1125,6 +1125,3019 @@ class Command_Visual_List extends Command_Visual
 
 // Note: leave this for packaging ?>
 <?php
+
+# 
+# hjson-php
+# https://github.com/hjson/hjson-php
+# v 2.1.0+
+#
+# MIT License
+#
+
+// Note: leave this for packaging ?>
+<?php
+
+class HJSONException extends \Exception
+{
+}
+
+// Note: leave this for packaging ?>
+<?php
+
+class HJSONParser
+{
+
+    private $text;
+    private $at;   // The index of the current character
+    private $ch;   // The current character
+    private $escapee = [];
+    private $keepWsc; // keep whitespace
+
+    public function __construct()
+    {
+        $this->escapee = [
+            '"'  => '"',
+            '\'' => '\'',
+            "\\" => "\\",
+            '/'  => '/',
+            'b'  => chr(8),
+            'f'  => chr(12),
+            'n'  => "\n",
+            'r'  => "\r",
+            't'  => "\t"
+        ];
+    }
+
+    public function parse($source, $options = [])
+    {
+        $this->keepWsc = $options && isset($options['keepWsc']) && $options['keepWsc'];
+        $this->text = $source;
+        $data = $this->rootValue();
+
+        if ($options && isset($options['assoc']) && $options['assoc']) {
+            $data = json_decode(json_encode($data), true);
+        }
+
+        return $data;
+    }
+
+    private function resetAt()
+    {
+        $this->at = 0;
+        $this->ch = ' ';
+    }
+
+    public function parseWsc($source, $options = [])
+    {
+        return $this->parse($source, array_merge($options, ['keepWsc' => true]));
+    }
+
+    private function isPunctuatorChar($c)
+    {
+        return $c === '{' || $c === '}' || $c === '[' || $c === ']' || $c === ',' || $c === ':';
+    }
+
+    private function checkExit($result)
+    {
+        $this->white();
+        if ($this->ch !== null) {
+            $this->error("Syntax error, found trailing characters!");
+        }
+        return $result;
+    }
+
+    private function rootValue()
+    {
+        // Braces for the root object are optional
+
+        $this->resetAt();
+        $this->white();
+        switch ($this->ch) {
+            case '{':
+                return $this->checkExit($this->object());
+            case '[':
+                return $this->checkExit($this->_array());
+        }
+
+        try {
+          // assume we have a root object without braces
+            return $this->checkExit($this->object(true));
+        } catch (HJSONException $e) {
+            // test if we are dealing with a single JSON value instead (true/false/null/num/"")
+            $this->resetAt();
+            try {
+                return $this->checkExit($this->value());
+            } catch (HJSONException $e2) {
+                throw $e;
+            } // throw original error
+        }
+    }
+
+    private function value()
+    {
+        $this->white();
+        switch ($this->ch) {
+            case '{':
+                return $this->object();
+            case '[':
+                return $this->_array();
+            case '"':
+                return $this->string('"');
+            case '\'':
+                if ($this->peek(0) !== '\'' || $this->peek(1) !== '\'') {
+                    return $this->string('\'');
+                }
+                // Falls through on multiline strings
+            default:
+                return $this->tfnns();
+        }
+    }
+
+    private function string($quote)
+    {
+        // Parse a string value.
+        $hex;
+        $string = '';
+        $uffff;
+
+        // When parsing for string values, we must look for " and \ characters.
+        if ($this->ch === $quote) {
+            while ($this->next() !== null) {
+                if ($this->ch === $quote) {
+                    $this->next();
+                    return $string;
+                }
+                if ($this->ch === "\\") {
+                    $this->next();
+                    if ($this->ch === 'u') {
+                        $uffff = '';
+                        for ($i = 0; $i < 4; $i++) {
+                            $uffff .= $this->next();
+                        }
+                        if (!ctype_xdigit($uffff)) {
+                            $this->error("Bad \\u char");
+                        }
+                        $string .= mb_convert_encoding(pack('H*', $uffff), 'UTF-8', 'UTF-16BE');
+                    } elseif (@$this->escapee[$this->ch]) {
+                        $string .= $this->escapee[$this->ch];
+                    } else {
+                        break;
+                    }
+                } else {
+                    $string .= $this->ch;
+                }
+            }
+        }
+        $this->error("Bad string");
+    }
+
+    private function _array()
+    {
+        // Parse an array value.
+        // assumeing ch === '['
+
+        $array = [];
+        $kw = null;
+        $wat = null;
+
+        if ($this->keepWsc) {
+            $array['__WSC__'] = [];
+            $kw = &$array['__WSC__'];
+        }
+
+        $this->next();
+        $wat = $this->at;
+        $this->white();
+        if ($kw !== null) {
+            $c = $this->getComment($wat);
+            if (trim($c)) {
+                $kw[] = $c;
+            }
+        }
+
+        if ($this->ch === ']') {
+            $this->next();
+            return $array;  // empty array
+        }
+
+        while ($this->ch !== null) {
+            $array[] = $this->value();
+            $wat = $this->at;
+            $this->white();
+            // in Hjson the comma is optional and trailing commas are allowed
+            if ($this->ch === ',') {
+                $this->next();
+                $wat = $this->at;
+                $this->white();
+            }
+            if ($kw !== null) {
+                $c = $this->getComment($wat);
+                if (trim($c)) {
+                    $kw[] = $c;
+                }
+            }
+            if ($this->ch === ']') {
+                $this->next();
+                return $array;
+            }
+            $this->white();
+        }
+
+        $this->error("End of input while parsing an array (did you forget a closing ']'?)");
+    }
+
+    private function object($withoutBraces = false)
+    {
+        // Parse an object value.
+        $key = null;
+        $object = new \stdClass;
+        $kw = null;
+        $wat = null;
+        if ($this->keepWsc) {
+            $kw = new \stdClass;
+            $kw->c = new \stdClass;
+            $kw->o = [];
+            $object->__WSC__ = $kw;
+            if ($withoutBraces) {
+                $kw->noRootBraces = true;
+            }
+        }
+
+        if (!$withoutBraces) {
+            // assuming ch === '{'
+            $this->next();
+            $wat = $this->at;
+        } else {
+            $wat = 1;
+        }
+
+        $this->white();
+        if ($kw) {
+            $this->pushWhite(" ", $kw, $wat);
+        }
+        if ($this->ch === '}' && !$withoutBraces) {
+            $this->next();
+            return $object;  // empty object
+        }
+        while ($this->ch !== null) {
+            $key = $this->keyname();
+            $this->white();
+            $this->next(':');
+            // duplicate keys overwrite the previous value
+            if ($key !== '') {
+                $object->$key = $this->value();
+            }
+            $wat = $this->at;
+            $this->white();
+            // in Hjson the comma is optional and trailing commas are allowed
+            if ($this->ch === ',') {
+                $this->next();
+                $wat = $this->at;
+                $this->white();
+            }
+            if ($kw) {
+                $this->pushWhite($key, $kw, $wat);
+            }
+            if ($this->ch === '}' && !$withoutBraces) {
+                $this->next();
+                return $object;
+            }
+            $this->white();
+        }
+
+        if ($withoutBraces) {
+            return $object;
+        } else {
+            $this->error("End of input while parsing an object (did you forget a closing '}'?)");
+        }
+    }
+
+    private function pushWhite($key, &$kw, $wat)
+    {
+        $kw->c->$key = $this->getComment($wat);
+        if (trim($key)) {
+            $kw->o[] = $key;
+        }
+    }
+
+    private function white()
+    {
+        while ($this->ch !== null) {
+            // Skip whitespace.
+            while ($this->ch && $this->ch <= ' ') {
+                $this->next();
+            }
+            // Hjson allows comments
+            if ($this->ch === '#' || $this->ch === '/' && $this->peek(0) === '/') {
+                while ($this->ch !== null && $this->ch !== "\n") {
+                    $this->next();
+                }
+            } elseif ($this->ch === '/' && $this->peek(0) === '*') {
+                $this->next();
+                $this->next();
+                while ($this->ch !== null && !($this->ch === '*' && $this->peek(0) === '/')) {
+                    $this->next();
+                }
+                if ($this->ch !== null) {
+                    $this->next();
+                    $this->next();
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    private function error($m)
+    {
+        $col=0;
+        $colBytes = 0;
+        $line=1;
+
+        $i = $this->at;
+        while ($i > 0) {
+            $ch = mb_substr(mb_strcut($this->text, $i - 1), 0, 1);
+            $i -= strlen($ch);
+
+            if ($ch === "\n") {
+                break;
+            }
+
+            $col++;
+            $colBytes += strlen($ch);
+        }
+
+        for (; $i > 0; $i--) {
+            if ($this->text[$i] === "\n") {
+                $line++;
+            }
+        }
+        throw new HJSONException("$m at line $line, $col >>>". mb_substr(mb_strcut($this->text, $this->at - $colBytes), 0, 20) ." ...");
+    }
+
+    private function next($c = false)
+    {
+        // If a c parameter is provided, verify that it matches the current character.
+
+        if ($c && $c !== $this->ch) {
+            $this->error("Expected '$c' instead of '{$this->ch}'");
+        }
+
+        // Get the next character. When there are no more characters,
+        // return the empty string.
+        $this->ch = (strlen($this->text) > $this->at) ? mb_substr(mb_strcut($this->text, $this->at), 0, 1) : null;
+        $this->at += strlen($this->ch);
+        return $this->ch;
+    }
+
+    private function peek($offs)
+    {
+        // range check is not required
+        if ($offs >= 0) {
+            return mb_substr(mb_strcut($this->text, $this->at), $offs, 1);
+        } else {
+            return mb_substr(mb_strcut($this->text, 0, $this->at), $offs, 1);
+        }
+    }
+
+    private function skipIndent($indent)
+    {
+        $skip = $indent;
+        while ($this->ch && $this->ch <= ' ' && $this->ch !== "\n" && $skip-- > 0) {
+            $this->next();
+        }
+    }
+
+    private function mlString()
+    {
+        // Parse a multiline string value.
+        $string = '';
+        $triple = 0;
+
+        // we are at ''' +1 - get indent
+        $indent = 0;
+        while (true) {
+            $c = $this->peek(-$indent-5);
+            if ($c === null || $c === "\n") {
+                break;
+            }
+            $indent++;
+        }
+
+        // skip white/to (newline)
+        while ($this->ch !== null && $this->ch <= ' ' && $this->ch !== "\n") {
+            $this->next();
+        }
+        if ($this->ch === "\n") {
+            $this->next();
+            $this->skipIndent($indent);
+        }
+
+        // When parsing multiline string values, we must look for ' characters.
+        while (true) {
+            if ($this->ch === null) {
+                $this->error("Bad multiline string");
+            } elseif ($this->ch === '\'') {
+                $triple++;
+                $this->next();
+                if ($triple === 3) {
+                    if (substr($string, -1) === "\n") {
+                        $string = mb_substr($string, 0, -1); // remove last EOL
+                    }
+                    return $string;
+                } else {
+                    continue;
+                }
+            } else {
+                while ($triple > 0) {
+                    $string .= '\'';
+                    $triple--;
+                }
+            }
+            if ($this->ch === "\n") {
+                $string .= "\n";
+                $this->next();
+                $this->skipIndent($indent);
+            } else {
+                if ($this->ch !== "\r") {
+                    $string .= $this->ch;
+                }
+                $this->next();
+            }
+        }
+    }
+
+    private function keyname()
+    {
+        // quotes for keys are optional in Hjson
+        // unless they include {}[],: or whitespace.
+
+        if ($this->ch === '"') {
+            return $this->string('"');
+        } else if ($this->ch === '\'') {
+            return $this->string('\'');
+        }
+
+        $name = "";
+        $start = $this->at;
+        $space = -1;
+
+        while (true) {
+            if ($this->ch === ':') {
+                if ($name === '') {
+                    $this->error("Found ':' but no key name (for an empty key name use quotes)");
+                } elseif ($space >=0 && $space !== mb_strlen($name)) {
+                    $this->at = $start + $space;
+                    $this->error("Found whitespace in your key name (use quotes to include)");
+                }
+                return $name;
+            } elseif ($this->ch <= ' ') {
+                if (!$this->ch) {
+                    $this->error("Found EOF while looking for a key name (check your syntax)");
+                } elseif ($space < 0) {
+                    $space = mb_strlen($name);
+                }
+            } elseif ($this->isPunctuatorChar($this->ch)) {
+                $this->error("Found '{$this->ch}' where a key name was expected (check your syntax or use quotes if the key name includes {}[],: or whitespace)");
+            } else {
+                $name .= $this->ch;
+            }
+            $this->next();
+        }
+    }
+
+    private function tfnns()
+    {
+        // Hjson strings can be quoteless
+        // returns string, true, false, or null.
+
+        if ($this->isPunctuatorChar($this->ch)) {
+            $this->error("Found a punctuator character '{$this->ch}' when expecting a quoteless string (check your syntax)");
+        }
+
+        $value = $this->ch;
+        while (true) {
+            $isEol = $this->next() === null;
+            if (mb_strlen($value) === 3 && $value === "'''") {
+                return $this->mlString();
+            }
+            $isEol = $isEol || $this->ch === "\r" || $this->ch === "\n";
+
+            if ($isEol || $this->ch === ',' ||
+                $this->ch === '}' || $this->ch === ']' ||
+                $this->ch === '#' ||
+                $this->ch === '/' && ($this->peek(0) === '/' || $this->peek(0) === '*')
+            ) {
+                $chf = $value[0];
+                switch ($chf) {
+                    case 'f':
+                        if (trim($value) === "false") {
+                            return false;
+                        }
+                        break;
+                    case 'n':
+                        if (trim($value) === "null") {
+                            return null;
+                        }
+                        break;
+                    case 't':
+                        if (trim($value) === "true") {
+                            return true;
+                        }
+                        break;
+                    default:
+                        if ($chf === '-' || $chf >= '0' && $chf <= '9') {
+                            $n = HJSONUtils::tryParseNumber($value);
+                            if ($n !== null) {
+                                return $n;
+                            }
+                        }
+                }
+                if ($isEol) {
+                    // remove any whitespace at the end (ignored in quoteless strings)
+                    return trim($value);
+                }
+            }
+            $value .= $this->ch;
+        }
+    }
+
+    private function getComment($wat)
+    {
+        $i;
+        $wat--;
+        // remove trailing whitespace
+        for ($i = $this->at - 2; $i > $wat && $this->text[$i] <= ' ' && $this->text[$i] !== "\n"; $i--) {
+        }
+
+        // but only up to EOL
+        if ($this->text[$i] === "\n") {
+            $i--;
+        }
+        if ($this->text[$i] === "\r") {
+            $i--;
+        }
+
+        $res = mb_substr($this->text, $wat, $i-$wat+1);
+        for ($i = 0; $i < mb_strlen($res); $i++) {
+            if ($res[$i] > ' ') {
+                return $res;
+            }
+        }
+
+        return "";
+    }
+}
+
+// Note: leave this for packaging ?>
+<?php
+
+/**
+ * NOTE: this may return an empty string at the end of the array when the input
+ * string ends with a newline character
+ */
+function HJSON_mb_str_split($string)
+{
+    return preg_split('/(?<!^)/u', $string);
+}
+
+class HJSONStringifier
+{
+
+    // needsEscape tests if the string can be written without escapes
+    private $needsEscape = '/[\\\"\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}\x]/u';
+    // needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
+    private $needsQuotes = '/^\\s|^"|^\'|^\'\'\'|^#|^\\/\\*|^\\/\\/|^\\{|^\\}|^\\[|^\\]|^:|^,|\\s$|[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}\x]/u';
+    // needsEscapeML tests if the string can be written as a multiline string (includes needsEscape but without \n, \r, \\ and \")
+    private $needsEscapeML = '/^\\s+$|\'\'\'|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}\x]/u';
+    private $startsWithKeyword = '/^(true|false|null)\s*((,|\]|\}|#|\/\/|\/\*).*)?$/';
+    private $needsEscapeName = '/[,\{\[\}\]\s:#"\']|\/\/|\/\*|\'\'\'/';
+    private $gap = '';
+    private $indent = '  ';
+
+    // options
+    private $eol;
+    private $keepWsc;
+    private $bracesSameLine;
+    private $quoteAlways;
+    private $forceKeyQuotes;
+    private $emitRootBraces;
+
+    private $defaultBracesSameLine = false;
+
+    public function __construct()
+    {
+        $this->meta = [
+            "\t" => "\\t",
+            "\n" => "\\n",
+            "\r" => "\\r",
+            '"'  => '\\"',
+            '\''  => '\\\'',
+            '\\' => "\\\\"
+        ];
+        $this->meta[chr(8)] = '\\b';
+        $this->meta[chr(12)] = '\\f';
+    }
+
+
+    public function stringify($value, $opt = [])
+    {
+        $this->eol = PHP_EOL;
+        $this->indent = '  ';
+        $this->keepWsc = false;
+        $this->bracesSameLine = $this->defaultBracesSameLine;
+        $this->quoteAlways = false;
+        $this->forceKeyQuotes = false;
+        $this->emitRootBraces = true;
+        $space = null;
+
+        if ($opt && is_array($opt)) {
+            if (@$opt['eol'] === "\n" || @$opt['eol'] === "\r\n") {
+                $this->eol = $opt['eol'];
+            }
+            $space = @$opt['space'];
+            $this->keepWsc = @$opt['keepWsc'];
+            $this->bracesSameLine = @$opt['bracesSameLine'] || $this->defaultBracesSameLine;
+            $this->emitRootBraces = @$opt['emitRootBraces'];
+            $this->quoteAlways = @$opt['quotes'] === 'always';
+            $this->forceKeyQuotes = @$opt['keyQuotes'] === 'always';
+        }
+
+        // If the space parameter is a number, make an indent string containing that
+        // many spaces. If it is a string, it will be used as the indent string.
+        if (is_int($space)) {
+            $this->indent = '';
+            for ($i = 0; $i < $space; $i++) {
+                $this->indent .= ' ';
+            }
+        } elseif (is_string($space)) {
+            $this->indent = $space;
+        }
+
+        // Return the result of stringifying the value.
+        return $this->str($value, null, true, true);
+    }
+
+    public function stringifyWsc($value, $opt = [])
+    {
+        return $this->stringify($value, array_merge($opt, ['keepWsc' => true]));
+    }
+
+    private function isWhite($c)
+    {
+        return $c <= ' ';
+    }
+
+    private function quoteReplace($string)
+    {
+        mb_ereg_search_init($string, $this->needsEscape);
+        $r = mb_ereg_search();
+        $chars = HJSON_mb_str_split($string);
+        $chars = array_map(function ($char) {
+            if (preg_match($this->needsEscape, $char)) {
+                $a = $char;
+                $c = @$this->meta[$a] ?: null;
+                if (gettype($c) === 'string') {
+                    return $c;
+                } else {
+                    return $char;
+                }
+            } else {
+                return $char;
+            }
+        }, $chars);
+
+        return implode('', $chars);
+    }
+
+    private function quote($string = null, $gap = null, $hasComment = null, $isRootObject = null)
+    {
+        if (!$string) {
+            return '""';
+        }
+
+        // Check if we can insert this string without quotes
+        // see hjson syntax (must not parse as true, false, null or number)
+        if ($this->quoteAlways || $hasComment ||
+            preg_match($this->needsQuotes, $string) ||
+            HJSONUtils::tryParseNumber($string, true) !== null ||
+            preg_match($this->startsWithKeyword, $string)) {
+            // If the string contains no control characters, no quote characters, and no
+            // backslash characters, then we can safely slap some quotes around it.
+            // Otherwise we first check if the string can be expressed in multiline
+            // format or we must replace the offending characters with safe escape
+            // sequences.
+
+            if (!preg_match($this->needsEscape, $string)) {
+                return '"' . $string . '"';
+            } elseif (!preg_match($this->needsEscapeML, $string) && !$isRootObject) {
+                return $this->mlString($string, $gap);
+            } else {
+                return '"' . $this->quoteReplace($string) . '"';
+            }
+        } else {
+            // return without quotes
+            return $string;
+        }
+    }
+
+    private function mlString($string, $gap)
+    {
+        // wrap the string into the ''' (multiline) format
+
+        $a = explode("\n", mb_ereg_replace("\r", "", $string));
+        $gap .= $this->indent;
+
+        if (count($a) === 1) {
+            // The string contains only a single line. We still use the multiline
+            // format as it avoids escaping the \ character (e.g. when used in a
+            // regex).
+            return "'''" . $a[0] . "'''";
+        } else {
+            $res = $this->eol . $gap . "'''";
+            for ($i = 0; $i < count($a); $i++) {
+                $res .= $this->eol;
+                if ($a[$i]) {
+                    $res .= $gap . $a[$i];
+                }
+            }
+            return $res . $this->eol . $gap . "'''";
+        }
+    }
+
+    private function quoteName($name)
+    {
+        if (!$name) {
+            return '""';
+        }
+
+        // Check if we can insert this name without quotes
+        if (preg_match($this->needsEscapeName, $name)) {
+            return '"' . (preg_match($this->needsEscape, $name) ? $this->quoteReplace($name) : $name) . '"';
+        } else {
+            // return without quotes
+            return $name;
+        }
+    }
+
+    private function str($value, $hasComment = null, $noIndent = null, $isRootObject = null)
+    {
+        // Produce a string from value.
+
+        $startsWithNL = function ($str) {
+            return $str && $str[$str[0] === "\r" ? 1 : 0] === "\n";
+        };
+        $testWsc = function ($str) use ($startsWithNL) {
+            return $str && !$startsWithNL($str);
+        };
+        $wsc = function ($str) {
+            if (!$str) {
+                return "";
+            }
+            for ($i = 0; $i < mb_strlen($str); $i++) {
+                $c = $str[$i];
+                if ($c === "\n" ||
+                    $c === '#' ||
+                    $c === '/' && ($str[$i+1] === '/' || $str[$i+1] === '*')) {
+                    break;
+                }
+                if ($c > ' ') {
+                    return ' # ' . $str;
+                }
+            }
+            return $str;
+        };
+
+        // What happens next depends on the value's type.
+        switch (gettype($value)) {
+            case 'string':
+                $str = $this->quote($value, $this->gap, $hasComment, $isRootObject);
+                return $str;
+
+            case 'integer':
+            case 'double':
+                return is_numeric($value) ? str_replace('E', 'e', "$value") : 'null';
+
+            case 'boolean':
+                return $value ? 'true' : 'false';
+
+            case 'NULL':
+                return 'null';
+
+            case 'object':
+            case 'array':
+                $isArray = is_array($value);
+
+                $isAssocArray = function (array $arr) {
+                    if (array() === $arr) {
+                        return false;
+                    }
+                    return array_keys($arr) !== range(0, count($arr) - 1);
+                };
+                if ($isArray && $isAssocArray($value)) {
+                    $value = (object) $value;
+                    $isArray = false;
+                }
+
+                $kw = null;
+                $kwl = null; // whitespace & comments
+                if ($this->keepWsc) {
+                    if ($isArray) {
+                        $kw = @$value['__WSC__'];
+                    } else {
+                        $kw = @$value->__WSC__;
+                    }
+                }
+
+                $showBraces = $isArray || !$isRootObject || ($kw ? !@$kw->noRootBraces : $this->emitRootBraces);
+
+                // Make an array to hold the partial results of stringifying this object value.
+                $mind = $this->gap;
+                if ($showBraces) {
+                    $this->gap .= $this->indent;
+                }
+                $eolMind = $this->eol . $mind;
+                $eolGap = $this->eol . $this->gap;
+                $prefix = $noIndent || $this->bracesSameLine ? '' : $eolMind;
+                $partial = [];
+
+                $k;
+                $v; // key, value
+
+                if ($isArray) {
+                    // The value is an array. Stringify every element. Use null as a placeholder
+                    // for non-JSON values.
+
+                    $length = count($value);
+                    if (array_key_exists('__WSC__', $value)) {
+                        $length--;
+                    }
+
+                    for ($i = 0; $i < $length; $i++) {
+                        if ($kw) {
+                            $partial[] = $wsc(@$kw[$i]) . $eolGap;
+                        }
+                        $str = $this->str($value[$i], $kw ? $testWsc(@$kw[$i+1]) : false, true);
+                        $partial[] = $str !== null ? $str : 'null';
+                    }
+                    if ($kw) {
+                        $partial[] = $wsc(@$kw[$i]) . $eolMind;
+                    }
+
+                    // Join all of the elements together, separated with newline, and wrap them in
+                    // brackets.
+                    if ($kw) {
+                        $v = $prefix . '[' . implode('', $partial) . ']';
+                    } elseif (count($partial) === 0) {
+                        $v = '[]';
+                    } else {
+                        $v = $prefix . '[' . $eolGap . implode($eolGap, $partial) . $eolMind . ']';
+                    }
+                } else {
+                    // Otherwise, iterate through all of the keys in the object.
+
+                    if ($kw) {
+                        $emptyKey = " ";
+                        $kwl = $wsc($kw->c->$emptyKey);
+                        $keys = $kw->o;
+                        foreach ($value as $k => $vvv) {
+                            $keys[] = $k;
+                        }
+                        $keys = array_unique($keys);
+
+                        for ($i = 0, $length = count($keys); $i < $length; $i++) {
+                            $k = $keys[$i];
+                            if ($k === '__WSC__') {
+                                continue;
+                            }
+                            if ($showBraces || $i>0 || $kwl) {
+                                $partial[] = $kwl . $eolGap;
+                            }
+                            $kwl = $wsc($kw->c->$k);
+                            $v = $this->str($value->$k, $testWsc($kwl));
+                            if ($v !== null) {
+                                $partial[] = $this->quoteName($k) . ($startsWithNL($v) ? ':' : ': ') . $v;
+                            }
+                        }
+                        if ($showBraces || $kwl) {
+                            $partial[] = $kwl . $eolMind;
+                        }
+                    } else {
+                        foreach ($value as $k => $vvv) {
+                            $v = $this->str($vvv);
+                            if ($v !== null) {
+                                $partial[] = $this->quoteName($k) . ($startsWithNL($v) ? ':' : ': ') . $v;
+                            }
+                        }
+                    }
+
+                    // Join all of the member texts together, separated with newlines
+                    if (count($partial) === 0) {
+                        $v = '{}';
+                    } elseif ($showBraces) {
+                        // and wrap them in braces
+                        if ($kw) {
+                            $v = $prefix . '{' . implode('', $partial) . '}';
+                        } else {
+                            $v = $prefix . '{' . $eolGap . implode($eolGap, $partial) . $eolMind . '}';
+                        }
+                    } else {
+                        $v = implode($kw ? '' : $eolGap, $partial);
+                    }
+                }
+
+                $this->gap = $mind;
+                return $v;
+        }
+    }
+}
+
+// Note: leave this for packaging ?>
+<?php
+
+class HJSONUtils
+{
+
+    public static function tryParseNumber($text, $stopAtNext = null)
+    {
+        // Parse a number value.
+        $number = null;
+        $string = '';
+        $leadingZeros = 0;
+        $testLeading = true;
+        $at = 0;
+        $ch = null;
+        
+        $next = function () use ($text, &$ch, &$at) {
+            $ch = mb_strlen($text) > $at ? $text[$at] : null;
+            $at++;
+            return $ch;
+        };
+
+        $next();
+
+        if ($ch === '-') {
+            $string = '-';
+            $next();
+        }
+
+        while ($ch !== null && $ch >= '0' && $ch <= '9') {
+            if ($testLeading) {
+                if ($ch == '0') {
+                    $leadingZeros++;
+                } else {
+                    $testLeading = false;
+                }
+            }
+            $string .= $ch;
+            $next();
+        }
+        if ($testLeading) {
+            $leadingZeros--; // single 0 is allowed
+        }
+        if ($ch === '.') {
+            $string .= '.';
+            while ($next() !== null && $ch >= '0' && $ch <= '9') {
+                $string .= $ch;
+            }
+        }
+        if ($ch === 'e' || $ch === 'E') {
+            $string .= $ch;
+            $next();
+            if ($ch === '-' || $ch === '+') {
+                $string .= $ch;
+                $next();
+            }
+            while ($ch !== null && $ch >= '0' && $ch <= '9') {
+                $string .= $ch;
+                $next();
+            }
+        }
+
+        // skip white/to (newline)
+        while ($ch !== null && $ch <= ' ') {
+            $next();
+        }
+
+        if ($stopAtNext) {
+            // end scan if we find a control character like ,}] or a comment
+            if ($ch === ',' || $ch === '}' || $ch === ']' ||
+                $ch === '#' || $ch === '/' && ($text[$at] === '/' || $text[$at] === '*')) {
+                $ch = null;
+            }
+        }
+
+        $number = $string;
+        if (is_numeric($string)) {
+            $number = 0+$string;
+        }
+
+
+        if ($ch !== null || $leadingZeros || !is_numeric($number)) {
+            return null;
+        } else {
+            return $number;
+        }
+    }
+}
+
+// Note: leave this for packaging ?>
+<?php
+#
+#
+# Parsedown
+# http://parsedown.org
+#
+# (c) Emanuil Rusev
+# http://erusev.com
+#
+# For the full license information, view the LICENSE file that was distributed
+# with this source code.
+#
+#
+
+class Parsedown
+{
+    # ~
+
+    const version = '1.8.0-beta-7';
+
+    # ~
+
+    function text($text)
+    {
+        $Elements = $this->textElements($text);
+
+        # convert to markup
+        $markup = $this->elements($Elements);
+
+        # trim line breaks
+        $markup = trim($markup, "\n");
+
+        return $markup;
+    }
+
+    protected function textElements($text)
+    {
+        # make sure no definitions are set
+        $this->DefinitionData = array();
+
+        # standardize line breaks
+        $text = str_replace(array("\r\n", "\r"), "\n", $text);
+
+        # remove surrounding line breaks
+        $text = trim($text, "\n");
+
+        # split text into lines
+        $lines = explode("\n", $text);
+
+        # iterate through lines to identify blocks
+        return $this->linesElements($lines);
+    }
+
+    #
+    # Setters
+    #
+
+    function setBreaksEnabled($breaksEnabled)
+    {
+        $this->breaksEnabled = $breaksEnabled;
+
+        return $this;
+    }
+
+    protected $breaksEnabled;
+
+    function setMarkupEscaped($markupEscaped)
+    {
+        $this->markupEscaped = $markupEscaped;
+
+        return $this;
+    }
+
+    protected $markupEscaped;
+
+    function setUrlsLinked($urlsLinked)
+    {
+        $this->urlsLinked = $urlsLinked;
+
+        return $this;
+    }
+
+    protected $urlsLinked = true;
+
+    function setSafeMode($safeMode)
+    {
+        $this->safeMode = (bool) $safeMode;
+
+        return $this;
+    }
+
+    protected $safeMode;
+
+    function setStrictMode($strictMode)
+    {
+        $this->strictMode = (bool) $strictMode;
+
+        return $this;
+    }
+
+    protected $strictMode;
+
+    protected $safeLinksWhitelist = array(
+        'http://',
+        'https://',
+        'ftp://',
+        'ftps://',
+        'mailto:',
+        'tel:',
+        'data:image/png;base64,',
+        'data:image/gif;base64,',
+        'data:image/jpeg;base64,',
+        'irc:',
+        'ircs:',
+        'git:',
+        'ssh:',
+        'news:',
+        'steam:',
+    );
+
+    #
+    # Lines
+    #
+
+    protected $BlockTypes = array(
+        '#' => array('Header'),
+        '*' => array('Rule', 'List'),
+        '+' => array('List'),
+        '-' => array('SetextHeader', 'Table', 'Rule', 'List'),
+        '0' => array('List'),
+        '1' => array('List'),
+        '2' => array('List'),
+        '3' => array('List'),
+        '4' => array('List'),
+        '5' => array('List'),
+        '6' => array('List'),
+        '7' => array('List'),
+        '8' => array('List'),
+        '9' => array('List'),
+        ':' => array('Table'),
+        '<' => array('Comment', 'Markup'),
+        '=' => array('SetextHeader'),
+        '>' => array('Quote'),
+        '[' => array('Reference'),
+        '_' => array('Rule'),
+        '`' => array('FencedCode'),
+        '|' => array('Table'),
+        '~' => array('FencedCode'),
+    );
+
+    # ~
+
+    protected $unmarkedBlockTypes = array(
+        'Code',
+    );
+
+    #
+    # Blocks
+    #
+
+    protected function lines(array $lines)
+    {
+        return $this->elements($this->linesElements($lines));
+    }
+
+    protected function linesElements(array $lines)
+    {
+        $Elements = array();
+        $CurrentBlock = null;
+
+        foreach ($lines as $line)
+        {
+            if (chop($line) === '')
+            {
+                if (isset($CurrentBlock))
+                {
+                    $CurrentBlock['interrupted'] = (isset($CurrentBlock['interrupted'])
+                        ? $CurrentBlock['interrupted'] + 1 : 1
+                    );
+                }
+
+                continue;
+            }
+
+            while (($beforeTab = strstr($line, "\t", true)) !== false)
+            {
+                $shortage = 4 - mb_strlen($beforeTab, 'utf-8') % 4;
+
+                $line = $beforeTab
+                    . str_repeat(' ', $shortage)
+                    . substr($line, strlen($beforeTab) + 1)
+                ;
+            }
+
+            $indent = strspn($line, ' ');
+
+            $text = $indent > 0 ? substr($line, $indent) : $line;
+
+            # ~
+
+            $Line = array('body' => $line, 'indent' => $indent, 'text' => $text);
+
+            # ~
+
+            if (isset($CurrentBlock['continuable']))
+            {
+                $methodName = 'block' . $CurrentBlock['type'] . 'Continue';
+                $Block = $this->$methodName($Line, $CurrentBlock);
+
+                if (isset($Block))
+                {
+                    $CurrentBlock = $Block;
+
+                    continue;
+                }
+                else
+                {
+                    if ($this->isBlockCompletable($CurrentBlock['type']))
+                    {
+                        $methodName = 'block' . $CurrentBlock['type'] . 'Complete';
+                        $CurrentBlock = $this->$methodName($CurrentBlock);
+                    }
+                }
+            }
+
+            # ~
+
+            $marker = $text[0];
+
+            # ~
+
+            $blockTypes = $this->unmarkedBlockTypes;
+
+            if (isset($this->BlockTypes[$marker]))
+            {
+                foreach ($this->BlockTypes[$marker] as $blockType)
+                {
+                    $blockTypes []= $blockType;
+                }
+            }
+
+            #
+            # ~
+
+            foreach ($blockTypes as $blockType)
+            {
+                $Block = $this->{"block$blockType"}($Line, $CurrentBlock);
+
+                if (isset($Block))
+                {
+                    $Block['type'] = $blockType;
+
+                    if ( ! isset($Block['identified']))
+                    {
+                        if (isset($CurrentBlock))
+                        {
+                            $Elements[] = $this->extractElement($CurrentBlock);
+                        }
+
+                        $Block['identified'] = true;
+                    }
+
+                    if ($this->isBlockContinuable($blockType))
+                    {
+                        $Block['continuable'] = true;
+                    }
+
+                    $CurrentBlock = $Block;
+
+                    continue 2;
+                }
+            }
+
+            # ~
+
+            if (isset($CurrentBlock) and $CurrentBlock['type'] === 'Paragraph')
+            {
+                $Block = $this->paragraphContinue($Line, $CurrentBlock);
+            }
+
+            if (isset($Block))
+            {
+                $CurrentBlock = $Block;
+            }
+            else
+            {
+                if (isset($CurrentBlock))
+                {
+                    $Elements[] = $this->extractElement($CurrentBlock);
+                }
+
+                $CurrentBlock = $this->paragraph($Line);
+
+                $CurrentBlock['identified'] = true;
+            }
+        }
+
+        # ~
+
+        if (isset($CurrentBlock['continuable']) and $this->isBlockCompletable($CurrentBlock['type']))
+        {
+            $methodName = 'block' . $CurrentBlock['type'] . 'Complete';
+            $CurrentBlock = $this->$methodName($CurrentBlock);
+        }
+
+        # ~
+
+        if (isset($CurrentBlock))
+        {
+            $Elements[] = $this->extractElement($CurrentBlock);
+        }
+
+        # ~
+
+        return $Elements;
+    }
+
+    protected function extractElement(array $Component)
+    {
+        if ( ! isset($Component['element']))
+        {
+            if (isset($Component['markup']))
+            {
+                $Component['element'] = array('rawHtml' => $Component['markup']);
+            }
+            elseif (isset($Component['hidden']))
+            {
+                $Component['element'] = array();
+            }
+        }
+
+        return $Component['element'];
+    }
+
+    protected function isBlockContinuable($Type)
+    {
+        return method_exists($this, 'block' . $Type . 'Continue');
+    }
+
+    protected function isBlockCompletable($Type)
+    {
+        return method_exists($this, 'block' . $Type . 'Complete');
+    }
+
+    #
+    # Code
+
+    protected function blockCode($Line, $Block = null)
+    {
+        if (isset($Block) and $Block['type'] === 'Paragraph' and ! isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        if ($Line['indent'] >= 4)
+        {
+            $text = substr($Line['body'], 4);
+
+            $Block = array(
+                'element' => array(
+                    'name' => 'pre',
+                    'element' => array(
+                        'name' => 'code',
+                        'text' => $text,
+                    ),
+                ),
+            );
+
+            return $Block;
+        }
+    }
+
+    protected function blockCodeContinue($Line, $Block)
+    {
+        if ($Line['indent'] >= 4)
+        {
+            if (isset($Block['interrupted']))
+            {
+                $Block['element']['element']['text'] .= str_repeat("\n", $Block['interrupted']);
+
+                unset($Block['interrupted']);
+            }
+
+            $Block['element']['element']['text'] .= "\n";
+
+            $text = substr($Line['body'], 4);
+
+            $Block['element']['element']['text'] .= $text;
+
+            return $Block;
+        }
+    }
+
+    protected function blockCodeComplete($Block)
+    {
+        return $Block;
+    }
+
+    #
+    # Comment
+
+    protected function blockComment($Line)
+    {
+        if ($this->markupEscaped or $this->safeMode)
+        {
+            return;
+        }
+
+        if (strpos($Line['text'], '<!--') === 0)
+        {
+            $Block = array(
+                'element' => array(
+                    'rawHtml' => $Line['body'],
+                    'autobreak' => true,
+                ),
+            );
+
+            if (strpos($Line['text'], '-->') !== false)
+            {
+                $Block['closed'] = true;
+            }
+
+            return $Block;
+        }
+    }
+
+    protected function blockCommentContinue($Line, array $Block)
+    {
+        if (isset($Block['closed']))
+        {
+            return;
+        }
+
+        $Block['element']['rawHtml'] .= "\n" . $Line['body'];
+
+        if (strpos($Line['text'], '-->') !== false)
+        {
+            $Block['closed'] = true;
+        }
+
+        return $Block;
+    }
+
+    #
+    # Fenced Code
+
+    protected function blockFencedCode($Line)
+    {
+        $marker = $Line['text'][0];
+
+        $openerLength = strspn($Line['text'], $marker);
+
+        if ($openerLength < 3)
+        {
+            return;
+        }
+
+        $infostring = trim(substr($Line['text'], $openerLength), "\t ");
+
+        if (strpos($infostring, '`') !== false)
+        {
+            return;
+        }
+
+        $Element = array(
+            'name' => 'code',
+            'text' => '',
+        );
+
+        if ($infostring !== '')
+        {
+            /**
+             * https://www.w3.org/TR/2011/WD-html5-20110525/elements.html#classes
+             * Every HTML element may have a class attribute specified.
+             * The attribute, if specified, must have a value that is a set
+             * of space-separated tokens representing the various classes
+             * that the element belongs to.
+             * [...]
+             * The space characters, for the purposes of this specification,
+             * are U+0020 SPACE, U+0009 CHARACTER TABULATION (tab),
+             * U+000A LINE FEED (LF), U+000C FORM FEED (FF), and
+             * U+000D CARRIAGE RETURN (CR).
+             */
+            $language = substr($infostring, 0, strcspn($infostring, " \t\n\f\r"));
+
+            $Element['attributes'] = array('class' => "language-$language");
+        }
+
+        $Block = array(
+            'char' => $marker,
+            'openerLength' => $openerLength,
+            'element' => array(
+                'name' => 'pre',
+                'element' => $Element,
+            ),
+        );
+
+        return $Block;
+    }
+
+    protected function blockFencedCodeContinue($Line, $Block)
+    {
+        if (isset($Block['complete']))
+        {
+            return;
+        }
+
+        if (isset($Block['interrupted']))
+        {
+            $Block['element']['element']['text'] .= str_repeat("\n", $Block['interrupted']);
+
+            unset($Block['interrupted']);
+        }
+
+        if (($len = strspn($Line['text'], $Block['char'])) >= $Block['openerLength']
+            and chop(substr($Line['text'], $len), ' ') === ''
+        ) {
+            $Block['element']['element']['text'] = substr($Block['element']['element']['text'], 1);
+
+            $Block['complete'] = true;
+
+            return $Block;
+        }
+
+        $Block['element']['element']['text'] .= "\n" . $Line['body'];
+
+        return $Block;
+    }
+
+    protected function blockFencedCodeComplete($Block)
+    {
+        return $Block;
+    }
+
+    #
+    # Header
+
+    protected function blockHeader($Line)
+    {
+        $level = strspn($Line['text'], '#');
+
+        if ($level > 6)
+        {
+            return;
+        }
+
+        $text = trim($Line['text'], '#');
+
+        if ($this->strictMode and isset($text[0]) and $text[0] !== ' ')
+        {
+            return;
+        }
+
+        $text = trim($text, ' ');
+
+        $Block = array(
+            'element' => array(
+                'name' => 'h' . $level,
+                'handler' => array(
+                    'function' => 'lineElements',
+                    'argument' => $text,
+                    'destination' => 'elements',
+                )
+            ),
+        );
+
+        return $Block;
+    }
+
+    #
+    # List
+
+    protected function blockList($Line, array $CurrentBlock = null)
+    {
+        list($name, $pattern) = $Line['text'][0] <= '-' ? array('ul', '[*+-]') : array('ol', '[0-9]{1,9}+[.\)]');
+
+        if (preg_match('/^('.$pattern.'([ ]++|$))(.*+)/', $Line['text'], $matches))
+        {
+            $contentIndent = strlen($matches[2]);
+
+            if ($contentIndent >= 5)
+            {
+                $contentIndent -= 1;
+                $matches[1] = substr($matches[1], 0, -$contentIndent);
+                $matches[3] = str_repeat(' ', $contentIndent) . $matches[3];
+            }
+            elseif ($contentIndent === 0)
+            {
+                $matches[1] .= ' ';
+            }
+
+            $markerWithoutWhitespace = strstr($matches[1], ' ', true);
+
+            $Block = array(
+                'indent' => $Line['indent'],
+                'pattern' => $pattern,
+                'data' => array(
+                    'type' => $name,
+                    'marker' => $matches[1],
+                    'markerType' => ($name === 'ul' ? $markerWithoutWhitespace : substr($markerWithoutWhitespace, -1)),
+                ),
+                'element' => array(
+                    'name' => $name,
+                    'elements' => array(),
+                ),
+            );
+            $Block['data']['markerTypeRegex'] = preg_quote($Block['data']['markerType'], '/');
+
+            if ($name === 'ol')
+            {
+                $listStart = ltrim(strstr($matches[1], $Block['data']['markerType'], true), '0') ?: '0';
+
+                if ($listStart !== '1')
+                {
+                    if (
+                        isset($CurrentBlock)
+                        and $CurrentBlock['type'] === 'Paragraph'
+                        and ! isset($CurrentBlock['interrupted'])
+                    ) {
+                        return;
+                    }
+
+                    $Block['element']['attributes'] = array('start' => $listStart);
+                }
+            }
+
+            $Block['li'] = array(
+                'name' => 'li',
+                'handler' => array(
+                    'function' => 'li',
+                    'argument' => !empty($matches[3]) ? array($matches[3]) : array(),
+                    'destination' => 'elements'
+                )
+            );
+
+            $Block['element']['elements'] []= & $Block['li'];
+
+            return $Block;
+        }
+    }
+
+    protected function blockListContinue($Line, array $Block)
+    {
+        if (isset($Block['interrupted']) and empty($Block['li']['handler']['argument']))
+        {
+            return null;
+        }
+
+        $requiredIndent = ($Block['indent'] + strlen($Block['data']['marker']));
+
+        if ($Line['indent'] < $requiredIndent
+            and (
+                (
+                    $Block['data']['type'] === 'ol'
+                    and preg_match('/^[0-9]++'.$Block['data']['markerTypeRegex'].'(?:[ ]++(.*)|$)/', $Line['text'], $matches)
+                ) or (
+                    $Block['data']['type'] === 'ul'
+                    and preg_match('/^'.$Block['data']['markerTypeRegex'].'(?:[ ]++(.*)|$)/', $Line['text'], $matches)
+                )
+            )
+        ) {
+            if (isset($Block['interrupted']))
+            {
+                $Block['li']['handler']['argument'] []= '';
+
+                $Block['loose'] = true;
+
+                unset($Block['interrupted']);
+            }
+
+            unset($Block['li']);
+
+            $text = isset($matches[1]) ? $matches[1] : '';
+
+            $Block['indent'] = $Line['indent'];
+
+            $Block['li'] = array(
+                'name' => 'li',
+                'handler' => array(
+                    'function' => 'li',
+                    'argument' => array($text),
+                    'destination' => 'elements'
+                )
+            );
+
+            $Block['element']['elements'] []= & $Block['li'];
+
+            return $Block;
+        }
+        elseif ($Line['indent'] < $requiredIndent and $this->blockList($Line))
+        {
+            return null;
+        }
+
+        if ($Line['text'][0] === '[' and $this->blockReference($Line))
+        {
+            return $Block;
+        }
+
+        if ($Line['indent'] >= $requiredIndent)
+        {
+            if (isset($Block['interrupted']))
+            {
+                $Block['li']['handler']['argument'] []= '';
+
+                $Block['loose'] = true;
+
+                unset($Block['interrupted']);
+            }
+
+            $text = substr($Line['body'], $requiredIndent);
+
+            $Block['li']['handler']['argument'] []= $text;
+
+            return $Block;
+        }
+
+        if ( ! isset($Block['interrupted']))
+        {
+            $text = preg_replace('/^[ ]{0,'.$requiredIndent.'}+/', '', $Line['body']);
+
+            $Block['li']['handler']['argument'] []= $text;
+
+            return $Block;
+        }
+    }
+
+    protected function blockListComplete(array $Block)
+    {
+        if (isset($Block['loose']))
+        {
+            foreach ($Block['element']['elements'] as &$li)
+            {
+                if (end($li['handler']['argument']) !== '')
+                {
+                    $li['handler']['argument'] []= '';
+                }
+            }
+        }
+
+        return $Block;
+    }
+
+    #
+    # Quote
+
+    protected function blockQuote($Line)
+    {
+        if (preg_match('/^>[ ]?+(.*+)/', $Line['text'], $matches))
+        {
+            $Block = array(
+                'element' => array(
+                    'name' => 'blockquote',
+                    'handler' => array(
+                        'function' => 'linesElements',
+                        'argument' => (array) $matches[1],
+                        'destination' => 'elements',
+                    )
+                ),
+            );
+
+            return $Block;
+        }
+    }
+
+    protected function blockQuoteContinue($Line, array $Block)
+    {
+        if (isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        if ($Line['text'][0] === '>' and preg_match('/^>[ ]?+(.*+)/', $Line['text'], $matches))
+        {
+            $Block['element']['handler']['argument'] []= $matches[1];
+
+            return $Block;
+        }
+
+        if ( ! isset($Block['interrupted']))
+        {
+            $Block['element']['handler']['argument'] []= $Line['text'];
+
+            return $Block;
+        }
+    }
+
+    #
+    # Rule
+
+    protected function blockRule($Line)
+    {
+        $marker = $Line['text'][0];
+
+        if (substr_count($Line['text'], $marker) >= 3 and chop($Line['text'], " $marker") === '')
+        {
+            $Block = array(
+                'element' => array(
+                    'name' => 'hr',
+                ),
+            );
+
+            return $Block;
+        }
+    }
+
+    #
+    # Setext
+
+    protected function blockSetextHeader($Line, array $Block = null)
+    {
+        if ( ! isset($Block) or $Block['type'] !== 'Paragraph' or isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        if ($Line['indent'] < 4 and chop(chop($Line['text'], ' '), $Line['text'][0]) === '')
+        {
+            $Block['element']['name'] = $Line['text'][0] === '=' ? 'h1' : 'h2';
+
+            return $Block;
+        }
+    }
+
+    #
+    # Markup
+
+    protected function blockMarkup($Line)
+    {
+        if ($this->markupEscaped or $this->safeMode)
+        {
+            return;
+        }
+
+        if (preg_match('/^<[\/]?+(\w*)(?:[ ]*+'.$this->regexHtmlAttribute.')*+[ ]*+(\/)?>/', $Line['text'], $matches))
+        {
+            $element = strtolower($matches[1]);
+
+            if (in_array($element, $this->textLevelElements))
+            {
+                return;
+            }
+
+            $Block = array(
+                'name' => $matches[1],
+                'element' => array(
+                    'rawHtml' => $Line['text'],
+                    'autobreak' => true,
+                ),
+            );
+
+            return $Block;
+        }
+    }
+
+    protected function blockMarkupContinue($Line, array $Block)
+    {
+        if (isset($Block['closed']) or isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        $Block['element']['rawHtml'] .= "\n" . $Line['body'];
+
+        return $Block;
+    }
+
+    #
+    # Reference
+
+    protected function blockReference($Line)
+    {
+        if (strpos($Line['text'], ']') !== false
+            and preg_match('/^\[(.+?)\]:[ ]*+<?(\S+?)>?(?:[ ]+["\'(](.+)["\')])?[ ]*+$/', $Line['text'], $matches)
+        ) {
+            $id = strtolower($matches[1]);
+
+            $Data = array(
+                'url' => $matches[2],
+                'title' => isset($matches[3]) ? $matches[3] : null,
+            );
+
+            $this->DefinitionData['Reference'][$id] = $Data;
+
+            $Block = array(
+                'element' => array(),
+            );
+
+            return $Block;
+        }
+    }
+
+    #
+    # Table
+
+    protected function blockTable($Line, array $Block = null)
+    {
+        if ( ! isset($Block) or $Block['type'] !== 'Paragraph' or isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        if (
+            strpos($Block['element']['handler']['argument'], '|') === false
+            and strpos($Line['text'], '|') === false
+            and strpos($Line['text'], ':') === false
+            or strpos($Block['element']['handler']['argument'], "\n") !== false
+        ) {
+            return;
+        }
+
+        if (chop($Line['text'], ' -:|') !== '')
+        {
+            return;
+        }
+
+        $alignments = array();
+
+        $divider = $Line['text'];
+
+        $divider = trim($divider);
+        $divider = trim($divider, '|');
+
+        $dividerCells = explode('|', $divider);
+
+        foreach ($dividerCells as $dividerCell)
+        {
+            $dividerCell = trim($dividerCell);
+
+            if ($dividerCell === '')
+            {
+                return;
+            }
+
+            $alignment = null;
+
+            if ($dividerCell[0] === ':')
+            {
+                $alignment = 'left';
+            }
+
+            if (substr($dividerCell, - 1) === ':')
+            {
+                $alignment = $alignment === 'left' ? 'center' : 'right';
+            }
+
+            $alignments []= $alignment;
+        }
+
+        # ~
+
+        $HeaderElements = array();
+
+        $header = $Block['element']['handler']['argument'];
+
+        $header = trim($header);
+        $header = trim($header, '|');
+
+        $headerCells = explode('|', $header);
+
+        if (count($headerCells) !== count($alignments))
+        {
+            return;
+        }
+
+        foreach ($headerCells as $index => $headerCell)
+        {
+            $headerCell = trim($headerCell);
+
+            $HeaderElement = array(
+                'name' => 'th',
+                'handler' => array(
+                    'function' => 'lineElements',
+                    'argument' => $headerCell,
+                    'destination' => 'elements',
+                )
+            );
+
+            if (isset($alignments[$index]))
+            {
+                $alignment = $alignments[$index];
+
+                $HeaderElement['attributes'] = array(
+                    'style' => "text-align: $alignment;",
+                );
+            }
+
+            $HeaderElements []= $HeaderElement;
+        }
+
+        # ~
+
+        $Block = array(
+            'alignments' => $alignments,
+            'identified' => true,
+            'element' => array(
+                'name' => 'table',
+                'elements' => array(),
+            ),
+        );
+
+        $Block['element']['elements'] []= array(
+            'name' => 'thead',
+        );
+
+        $Block['element']['elements'] []= array(
+            'name' => 'tbody',
+            'elements' => array(),
+        );
+
+        $Block['element']['elements'][0]['elements'] []= array(
+            'name' => 'tr',
+            'elements' => $HeaderElements,
+        );
+
+        return $Block;
+    }
+
+    protected function blockTableContinue($Line, array $Block)
+    {
+        if (isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        if (count($Block['alignments']) === 1 or $Line['text'][0] === '|' or strpos($Line['text'], '|'))
+        {
+            $Elements = array();
+
+            $row = $Line['text'];
+
+            $row = trim($row);
+            $row = trim($row, '|');
+
+            preg_match_all('/(?:(\\\\[|])|[^|`]|`[^`]++`|`)++/', $row, $matches);
+
+            $cells = array_slice($matches[0], 0, count($Block['alignments']));
+
+            foreach ($cells as $index => $cell)
+            {
+                $cell = trim($cell);
+
+                $Element = array(
+                    'name' => 'td',
+                    'handler' => array(
+                        'function' => 'lineElements',
+                        'argument' => $cell,
+                        'destination' => 'elements',
+                    )
+                );
+
+                if (isset($Block['alignments'][$index]))
+                {
+                    $Element['attributes'] = array(
+                        'style' => 'text-align: ' . $Block['alignments'][$index] . ';',
+                    );
+                }
+
+                $Elements []= $Element;
+            }
+
+            $Element = array(
+                'name' => 'tr',
+                'elements' => $Elements,
+            );
+
+            $Block['element']['elements'][1]['elements'] []= $Element;
+
+            return $Block;
+        }
+    }
+
+    #
+    # ~
+    #
+
+    protected function paragraph($Line)
+    {
+        return array(
+            'type' => 'Paragraph',
+            'element' => array(
+                'name' => 'p',
+                'handler' => array(
+                    'function' => 'lineElements',
+                    'argument' => $Line['text'],
+                    'destination' => 'elements',
+                ),
+            ),
+        );
+    }
+
+    protected function paragraphContinue($Line, array $Block)
+    {
+        if (isset($Block['interrupted']))
+        {
+            return;
+        }
+
+        $Block['element']['handler']['argument'] .= "\n".$Line['text'];
+
+        return $Block;
+    }
+
+    #
+    # Inline Elements
+    #
+
+    protected $InlineTypes = array(
+        '!' => array('Image'),
+        '&' => array('SpecialCharacter'),
+        '*' => array('Emphasis'),
+        ':' => array('Url'),
+        '<' => array('UrlTag', 'EmailTag', 'Markup'),
+        '[' => array('Link'),
+        '_' => array('Emphasis'),
+        '`' => array('Code'),
+        '~' => array('Strikethrough'),
+        '\\' => array('EscapeSequence'),
+    );
+
+    # ~
+
+    protected $inlineMarkerList = '!*_&[:<`~\\';
+
+    #
+    # ~
+    #
+
+    public function line($text, $nonNestables = array())
+    {
+        return $this->elements($this->lineElements($text, $nonNestables));
+    }
+
+    protected function lineElements($text, $nonNestables = array())
+    {
+        # standardize line breaks
+        $text = str_replace(array("\r\n", "\r"), "\n", $text);
+
+        $Elements = array();
+
+        $nonNestables = (empty($nonNestables)
+            ? array()
+            : array_combine($nonNestables, $nonNestables)
+        );
+
+        # $excerpt is based on the first occurrence of a marker
+
+        while ($excerpt = strpbrk($text, $this->inlineMarkerList))
+        {
+            $marker = $excerpt[0];
+
+            $markerPosition = strlen($text) - strlen($excerpt);
+
+            $Excerpt = array('text' => $excerpt, 'context' => $text);
+
+            foreach ($this->InlineTypes[$marker] as $inlineType)
+            {
+                # check to see if the current inline type is nestable in the current context
+
+                if (isset($nonNestables[$inlineType]))
+                {
+                    continue;
+                }
+
+                $Inline = $this->{"inline$inlineType"}($Excerpt);
+
+                if ( ! isset($Inline))
+                {
+                    continue;
+                }
+
+                # makes sure that the inline belongs to "our" marker
+
+                if (isset($Inline['position']) and $Inline['position'] > $markerPosition)
+                {
+                    continue;
+                }
+
+                # sets a default inline position
+
+                if ( ! isset($Inline['position']))
+                {
+                    $Inline['position'] = $markerPosition;
+                }
+
+                # cause the new element to 'inherit' our non nestables
+
+
+                $Inline['element']['nonNestables'] = isset($Inline['element']['nonNestables'])
+                    ? array_merge($Inline['element']['nonNestables'], $nonNestables)
+                    : $nonNestables
+                ;
+
+                # the text that comes before the inline
+                $unmarkedText = substr($text, 0, $Inline['position']);
+
+                # compile the unmarked text
+                $InlineText = $this->inlineText($unmarkedText);
+                $Elements[] = $InlineText['element'];
+
+                # compile the inline
+                $Elements[] = $this->extractElement($Inline);
+
+                # remove the examined text
+                $text = substr($text, $Inline['position'] + $Inline['extent']);
+
+                continue 2;
+            }
+
+            # the marker does not belong to an inline
+
+            $unmarkedText = substr($text, 0, $markerPosition + 1);
+
+            $InlineText = $this->inlineText($unmarkedText);
+            $Elements[] = $InlineText['element'];
+
+            $text = substr($text, $markerPosition + 1);
+        }
+
+        $InlineText = $this->inlineText($text);
+        $Elements[] = $InlineText['element'];
+
+        foreach ($Elements as &$Element)
+        {
+            if ( ! isset($Element['autobreak']))
+            {
+                $Element['autobreak'] = false;
+            }
+        }
+
+        return $Elements;
+    }
+
+    #
+    # ~
+    #
+
+    protected function inlineText($text)
+    {
+        $Inline = array(
+            'extent' => strlen($text),
+            'element' => array(),
+        );
+
+        $Inline['element']['elements'] = self::pregReplaceElements(
+            $this->breaksEnabled ? '/[ ]*+\n/' : '/(?:[ ]*+\\\\|[ ]{2,}+)\n/',
+            array(
+                array('name' => 'br'),
+                array('text' => "\n"),
+            ),
+            $text
+        );
+
+        return $Inline;
+    }
+
+    protected function inlineCode($Excerpt)
+    {
+        $marker = $Excerpt['text'][0];
+
+        if (preg_match('/^(['.$marker.']++)[ ]*+(.+?)[ ]*+(?<!['.$marker.'])\1(?!'.$marker.')/s', $Excerpt['text'], $matches))
+        {
+            $text = $matches[2];
+            $text = preg_replace('/[ ]*+\n/', ' ', $text);
+
+            return array(
+                'extent' => strlen($matches[0]),
+                'element' => array(
+                    'name' => 'code',
+                    'text' => $text,
+                ),
+            );
+        }
+    }
+
+    protected function inlineEmailTag($Excerpt)
+    {
+        $hostnameLabel = '[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?';
+
+        $commonMarkEmail = '[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]++@'
+            . $hostnameLabel . '(?:\.' . $hostnameLabel . ')*';
+
+        if (strpos($Excerpt['text'], '>') !== false
+            and preg_match("/^<((mailto:)?$commonMarkEmail)>/i", $Excerpt['text'], $matches)
+        ){
+            $url = $matches[1];
+
+            if ( ! isset($matches[2]))
+            {
+                $url = "mailto:$url";
+            }
+
+            return array(
+                'extent' => strlen($matches[0]),
+                'element' => array(
+                    'name' => 'a',
+                    'text' => $matches[1],
+                    'attributes' => array(
+                        'href' => $url,
+                    ),
+                ),
+            );
+        }
+    }
+
+    protected function inlineEmphasis($Excerpt)
+    {
+        if ( ! isset($Excerpt['text'][1]))
+        {
+            return;
+        }
+
+        $marker = $Excerpt['text'][0];
+
+        if ($Excerpt['text'][1] === $marker and preg_match($this->StrongRegex[$marker], $Excerpt['text'], $matches))
+        {
+            $emphasis = 'strong';
+        }
+        elseif (preg_match($this->EmRegex[$marker], $Excerpt['text'], $matches))
+        {
+            $emphasis = 'em';
+        }
+        else
+        {
+            return;
+        }
+
+        return array(
+            'extent' => strlen($matches[0]),
+            'element' => array(
+                'name' => $emphasis,
+                'handler' => array(
+                    'function' => 'lineElements',
+                    'argument' => $matches[1],
+                    'destination' => 'elements',
+                )
+            ),
+        );
+    }
+
+    protected function inlineEscapeSequence($Excerpt)
+    {
+        if (isset($Excerpt['text'][1]) and in_array($Excerpt['text'][1], $this->specialCharacters))
+        {
+            return array(
+                'element' => array('rawHtml' => $Excerpt['text'][1]),
+                'extent' => 2,
+            );
+        }
+    }
+
+    protected function inlineImage($Excerpt)
+    {
+        if ( ! isset($Excerpt['text'][1]) or $Excerpt['text'][1] !== '[')
+        {
+            return;
+        }
+
+        $Excerpt['text']= substr($Excerpt['text'], 1);
+
+        $Link = $this->inlineLink($Excerpt);
+
+        if ($Link === null)
+        {
+            return;
+        }
+
+        $Inline = array(
+            'extent' => $Link['extent'] + 1,
+            'element' => array(
+                'name' => 'img',
+                'attributes' => array(
+                    'src' => $Link['element']['attributes']['href'],
+                    'alt' => $Link['element']['handler']['argument'],
+                ),
+                'autobreak' => true,
+            ),
+        );
+
+        $Inline['element']['attributes'] += $Link['element']['attributes'];
+
+        unset($Inline['element']['attributes']['href']);
+
+        return $Inline;
+    }
+
+    protected function inlineLink($Excerpt)
+    {
+        $Element = array(
+            'name' => 'a',
+            'handler' => array(
+                'function' => 'lineElements',
+                'argument' => null,
+                'destination' => 'elements',
+            ),
+            'nonNestables' => array('Url', 'Link'),
+            'attributes' => array(
+                'href' => null,
+                'title' => null,
+            ),
+        );
+
+        $extent = 0;
+
+        $remainder = $Excerpt['text'];
+
+        if (preg_match('/\[((?:[^][]++|(?R))*+)\]/', $remainder, $matches))
+        {
+            $Element['handler']['argument'] = $matches[1];
+
+            $extent += strlen($matches[0]);
+
+            $remainder = substr($remainder, $extent);
+        }
+        else
+        {
+            return;
+        }
+
+        if (preg_match('/^[(]\s*+((?:[^ ()]++|[(][^ )]+[)])++)(?:[ ]+("[^"]*+"|\'[^\']*+\'))?\s*+[)]/', $remainder, $matches))
+        {
+            $Element['attributes']['href'] = $matches[1];
+
+            if (isset($matches[2]))
+            {
+                $Element['attributes']['title'] = substr($matches[2], 1, - 1);
+            }
+
+            $extent += strlen($matches[0]);
+        }
+        else
+        {
+            if (preg_match('/^\s*\[(.*?)\]/', $remainder, $matches))
+            {
+                $definition = strlen($matches[1]) ? $matches[1] : $Element['handler']['argument'];
+                $definition = strtolower($definition);
+
+                $extent += strlen($matches[0]);
+            }
+            else
+            {
+                $definition = strtolower($Element['handler']['argument']);
+            }
+
+            if ( ! isset($this->DefinitionData['Reference'][$definition]))
+            {
+                return;
+            }
+
+            $Definition = $this->DefinitionData['Reference'][$definition];
+
+            $Element['attributes']['href'] = $Definition['url'];
+            $Element['attributes']['title'] = $Definition['title'];
+        }
+
+        return array(
+            'extent' => $extent,
+            'element' => $Element,
+        );
+    }
+
+    protected function inlineMarkup($Excerpt)
+    {
+        if ($this->markupEscaped or $this->safeMode or strpos($Excerpt['text'], '>') === false)
+        {
+            return;
+        }
+
+        if ($Excerpt['text'][1] === '/' and preg_match('/^<\/\w[\w-]*+[ ]*+>/s', $Excerpt['text'], $matches))
+        {
+            return array(
+                'element' => array('rawHtml' => $matches[0]),
+                'extent' => strlen($matches[0]),
+            );
+        }
+
+        if ($Excerpt['text'][1] === '!' and preg_match('/^<!---?[^>-](?:-?+[^-])*-->/s', $Excerpt['text'], $matches))
+        {
+            return array(
+                'element' => array('rawHtml' => $matches[0]),
+                'extent' => strlen($matches[0]),
+            );
+        }
+
+        if ($Excerpt['text'][1] !== ' ' and preg_match('/^<\w[\w-]*+(?:[ ]*+'.$this->regexHtmlAttribute.')*+[ ]*+\/?>/s', $Excerpt['text'], $matches))
+        {
+            return array(
+                'element' => array('rawHtml' => $matches[0]),
+                'extent' => strlen($matches[0]),
+            );
+        }
+    }
+
+    protected function inlineSpecialCharacter($Excerpt)
+    {
+        if (substr($Excerpt['text'], 1, 1) !== ' ' and strpos($Excerpt['text'], ';') !== false
+            and preg_match('/^&(#?+[0-9a-zA-Z]++);/', $Excerpt['text'], $matches)
+        ) {
+            return array(
+                'element' => array('rawHtml' => '&' . $matches[1] . ';'),
+                'extent' => strlen($matches[0]),
+            );
+        }
+
+        return;
+    }
+
+    protected function inlineStrikethrough($Excerpt)
+    {
+        if ( ! isset($Excerpt['text'][1]))
+        {
+            return;
+        }
+
+        if ($Excerpt['text'][1] === '~' and preg_match('/^~~(?=\S)(.+?)(?<=\S)~~/', $Excerpt['text'], $matches))
+        {
+            return array(
+                'extent' => strlen($matches[0]),
+                'element' => array(
+                    'name' => 'del',
+                    'handler' => array(
+                        'function' => 'lineElements',
+                        'argument' => $matches[1],
+                        'destination' => 'elements',
+                    )
+                ),
+            );
+        }
+    }
+
+    protected function inlineUrl($Excerpt)
+    {
+        if ($this->urlsLinked !== true or ! isset($Excerpt['text'][2]) or $Excerpt['text'][2] !== '/')
+        {
+            return;
+        }
+
+        if (strpos($Excerpt['context'], 'http') !== false
+            and preg_match('/\bhttps?+:[\/]{2}[^\s<]+\b\/*+/ui', $Excerpt['context'], $matches, PREG_OFFSET_CAPTURE)
+        ) {
+            $url = $matches[0][0];
+
+            $Inline = array(
+                'extent' => strlen($matches[0][0]),
+                'position' => $matches[0][1],
+                'element' => array(
+                    'name' => 'a',
+                    'text' => $url,
+                    'attributes' => array(
+                        'href' => $url,
+                    ),
+                ),
+            );
+
+            return $Inline;
+        }
+    }
+
+    protected function inlineUrlTag($Excerpt)
+    {
+        if (strpos($Excerpt['text'], '>') !== false and preg_match('/^<(\w++:\/{2}[^ >]++)>/i', $Excerpt['text'], $matches))
+        {
+            $url = $matches[1];
+
+            return array(
+                'extent' => strlen($matches[0]),
+                'element' => array(
+                    'name' => 'a',
+                    'text' => $url,
+                    'attributes' => array(
+                        'href' => $url,
+                    ),
+                ),
+            );
+        }
+    }
+
+    # ~
+
+    protected function unmarkedText($text)
+    {
+        $Inline = $this->inlineText($text);
+        return $this->element($Inline['element']);
+    }
+
+    #
+    # Handlers
+    #
+
+    protected function handle(array $Element)
+    {
+        if (isset($Element['handler']))
+        {
+            if (!isset($Element['nonNestables']))
+            {
+                $Element['nonNestables'] = array();
+            }
+
+            if (is_string($Element['handler']))
+            {
+                $function = $Element['handler'];
+                $argument = $Element['text'];
+                unset($Element['text']);
+                $destination = 'rawHtml';
+            }
+            else
+            {
+                $function = $Element['handler']['function'];
+                $argument = $Element['handler']['argument'];
+                $destination = $Element['handler']['destination'];
+            }
+
+            $Element[$destination] = $this->{$function}($argument, $Element['nonNestables']);
+
+            if ($destination === 'handler')
+            {
+                $Element = $this->handle($Element);
+            }
+
+            unset($Element['handler']);
+        }
+
+        return $Element;
+    }
+
+    protected function handleElementRecursive(array $Element)
+    {
+        return $this->elementApplyRecursive(array($this, 'handle'), $Element);
+    }
+
+    protected function handleElementsRecursive(array $Elements)
+    {
+        return $this->elementsApplyRecursive(array($this, 'handle'), $Elements);
+    }
+
+    protected function elementApplyRecursive($closure, array $Element)
+    {
+        $Element = call_user_func($closure, $Element);
+
+        if (isset($Element['elements']))
+        {
+            $Element['elements'] = $this->elementsApplyRecursive($closure, $Element['elements']);
+        }
+        elseif (isset($Element['element']))
+        {
+            $Element['element'] = $this->elementApplyRecursive($closure, $Element['element']);
+        }
+
+        return $Element;
+    }
+
+    protected function elementApplyRecursiveDepthFirst($closure, array $Element)
+    {
+        if (isset($Element['elements']))
+        {
+            $Element['elements'] = $this->elementsApplyRecursiveDepthFirst($closure, $Element['elements']);
+        }
+        elseif (isset($Element['element']))
+        {
+            $Element['element'] = $this->elementsApplyRecursiveDepthFirst($closure, $Element['element']);
+        }
+
+        $Element = call_user_func($closure, $Element);
+
+        return $Element;
+    }
+
+    protected function elementsApplyRecursive($closure, array $Elements)
+    {
+        foreach ($Elements as &$Element)
+        {
+            $Element = $this->elementApplyRecursive($closure, $Element);
+        }
+
+        return $Elements;
+    }
+
+    protected function elementsApplyRecursiveDepthFirst($closure, array $Elements)
+    {
+        foreach ($Elements as &$Element)
+        {
+            $Element = $this->elementApplyRecursiveDepthFirst($closure, $Element);
+        }
+
+        return $Elements;
+    }
+
+    protected function element(array $Element)
+    {
+        if ($this->safeMode)
+        {
+            $Element = $this->sanitiseElement($Element);
+        }
+
+        # identity map if element has no handler
+        $Element = $this->handle($Element);
+
+        $hasName = isset($Element['name']);
+
+        $markup = '';
+
+        if ($hasName)
+        {
+            $markup .= '<' . $Element['name'];
+
+            if (isset($Element['attributes']))
+            {
+                foreach ($Element['attributes'] as $name => $value)
+                {
+                    if ($value === null)
+                    {
+                        continue;
+                    }
+
+                    $markup .= " $name=\"".self::escape($value).'"';
+                }
+            }
+        }
+
+        $permitRawHtml = false;
+
+        if (isset($Element['text']))
+        {
+            $text = $Element['text'];
+        }
+        // very strongly consider an alternative if you're writing an
+        // extension
+        elseif (isset($Element['rawHtml']))
+        {
+            $text = $Element['rawHtml'];
+
+            $allowRawHtmlInSafeMode = isset($Element['allowRawHtmlInSafeMode']) && $Element['allowRawHtmlInSafeMode'];
+            $permitRawHtml = !$this->safeMode || $allowRawHtmlInSafeMode;
+        }
+
+        $hasContent = isset($text) || isset($Element['element']) || isset($Element['elements']);
+
+        if ($hasContent)
+        {
+            $markup .= $hasName ? '>' : '';
+
+            if (isset($Element['elements']))
+            {
+                $markup .= $this->elements($Element['elements']);
+            }
+            elseif (isset($Element['element']))
+            {
+                $markup .= $this->element($Element['element']);
+            }
+            else
+            {
+                if (!$permitRawHtml)
+                {
+                    $markup .= self::escape($text, true);
+                }
+                else
+                {
+                    $markup .= $text;
+                }
+            }
+
+            $markup .= $hasName ? '</' . $Element['name'] . '>' : '';
+        }
+        elseif ($hasName)
+        {
+            $markup .= ' />';
+        }
+
+        return $markup;
+    }
+
+    protected function elements(array $Elements)
+    {
+        $markup = '';
+
+        $autoBreak = true;
+
+        foreach ($Elements as $Element)
+        {
+            if (empty($Element))
+            {
+                continue;
+            }
+
+            $autoBreakNext = (isset($Element['autobreak'])
+                ? $Element['autobreak'] : isset($Element['name'])
+            );
+            // (autobreak === false) covers both sides of an element
+            $autoBreak = !$autoBreak ? $autoBreak : $autoBreakNext;
+
+            $markup .= ($autoBreak ? "\n" : '') . $this->element($Element);
+            $autoBreak = $autoBreakNext;
+        }
+
+        $markup .= $autoBreak ? "\n" : '';
+
+        return $markup;
+    }
+
+    # ~
+
+    protected function li($lines)
+    {
+        $Elements = $this->linesElements($lines);
+
+        if ( ! in_array('', $lines)
+            and isset($Elements[0]) and isset($Elements[0]['name'])
+            and $Elements[0]['name'] === 'p'
+        ) {
+            unset($Elements[0]['name']);
+        }
+
+        return $Elements;
+    }
+
+    #
+    # AST Convenience
+    #
+
+    /**
+     * Replace occurrences $regexp with $Elements in $text. Return an array of
+     * elements representing the replacement.
+     */
+    protected static function pregReplaceElements($regexp, $Elements, $text)
+    {
+        $newElements = array();
+
+        while (preg_match($regexp, $text, $matches, PREG_OFFSET_CAPTURE))
+        {
+            $offset = $matches[0][1];
+            $before = substr($text, 0, $offset);
+            $after = substr($text, $offset + strlen($matches[0][0]));
+
+            $newElements[] = array('text' => $before);
+
+            foreach ($Elements as $Element)
+            {
+                $newElements[] = $Element;
+            }
+
+            $text = $after;
+        }
+
+        $newElements[] = array('text' => $text);
+
+        return $newElements;
+    }
+
+    #
+    # Deprecated Methods
+    #
+
+    function parse($text)
+    {
+        $markup = $this->text($text);
+
+        return $markup;
+    }
+
+    protected function sanitiseElement(array $Element)
+    {
+        static $goodAttribute = '/^[a-zA-Z0-9][a-zA-Z0-9-_]*+$/';
+        static $safeUrlNameToAtt  = array(
+            'a'   => 'href',
+            'img' => 'src',
+        );
+
+        if ( ! isset($Element['name']))
+        {
+            unset($Element['attributes']);
+            return $Element;
+        }
+
+        if (isset($safeUrlNameToAtt[$Element['name']]))
+        {
+            $Element = $this->filterUnsafeUrlInAttribute($Element, $safeUrlNameToAtt[$Element['name']]);
+        }
+
+        if ( ! empty($Element['attributes']))
+        {
+            foreach ($Element['attributes'] as $att => $val)
+            {
+                # filter out badly parsed attribute
+                if ( ! preg_match($goodAttribute, $att))
+                {
+                    unset($Element['attributes'][$att]);
+                }
+                # dump onevent attribute
+                elseif (self::striAtStart($att, 'on'))
+                {
+                    unset($Element['attributes'][$att]);
+                }
+            }
+        }
+
+        return $Element;
+    }
+
+    protected function filterUnsafeUrlInAttribute(array $Element, $attribute)
+    {
+        foreach ($this->safeLinksWhitelist as $scheme)
+        {
+            if (self::striAtStart($Element['attributes'][$attribute], $scheme))
+            {
+                return $Element;
+            }
+        }
+
+        $Element['attributes'][$attribute] = str_replace(':', '%3A', $Element['attributes'][$attribute]);
+
+        return $Element;
+    }
+
+    #
+    # Static Methods
+    #
+
+    protected static function escape($text, $allowQuotes = false)
+    {
+        return htmlspecialchars($text, $allowQuotes ? ENT_NOQUOTES : ENT_QUOTES, 'UTF-8');
+    }
+
+    protected static function striAtStart($string, $needle)
+    {
+        $len = strlen($needle);
+
+        if ($len > strlen($string))
+        {
+            return false;
+        }
+        else
+        {
+            return strtolower(substr($string, 0, $len)) === strtolower($needle);
+        }
+    }
+
+    static function instance($name = 'default')
+    {
+        if (isset(self::$instances[$name]))
+        {
+            return self::$instances[$name];
+        }
+
+        $instance = new static();
+
+        self::$instances[$name] = $instance;
+
+        return $instance;
+    }
+
+    private static $instances = array();
+
+    #
+    # Fields
+    #
+
+    protected $DefinitionData;
+
+    #
+    # Read-Only
+
+    protected $specialCharacters = array(
+        '\\', '`', '*', '_', '{', '}', '[', ']', '(', ')', '>', '#', '+', '-', '.', '!', '|', '~'
+    );
+
+    protected $StrongRegex = array(
+        '*' => '/^[*]{2}((?:\\\\\*|[^*]|[*][^*]*+[*])+?)[*]{2}(?![*])/s',
+        '_' => '/^__((?:\\\\_|[^_]|_[^_]*+_)+?)__(?!_)/us',
+    );
+
+    protected $EmRegex = array(
+        '*' => '/^[*]((?:\\\\\*|[^*]|[*][*][^*]+?[*][*])+?)[*](?![*])/s',
+        '_' => '/^_((?:\\\\_|[^_]|__[^_]*__)+?)_(?!_)\b/us',
+    );
+
+    protected $regexHtmlAttribute = '[a-zA-Z_:][\w:.-]*+(?:\s*+=\s*+(?:[^"\'=<>`\s]+|"[^"]*+"|\'[^\']*+\'))?+';
+
+    protected $voidElements = array(
+        'area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
+    );
+
+    protected $textLevelElements = array(
+        'a', 'br', 'bdo', 'abbr', 'blink', 'nextid', 'acronym', 'basefont',
+        'b', 'em', 'big', 'cite', 'small', 'spacer', 'listing',
+        'i', 'rp', 'del', 'code',          'strike', 'marquee',
+        'q', 'rt', 'ins', 'font',          'strong',
+        's', 'tt', 'kbd', 'mark',
+        'u', 'xm', 'sub', 'nobr',
+                   'sup', 'ruby',
+                   'var', 'span',
+                   'wbr', 'time',
+    );
+}
+
+// Note: leave this for packaging ?>
+<?php
 /**
  * Console Abstract to be extended by specific console tools
  */
@@ -1155,6 +4168,7 @@ else
 if (!defined('PACKAGED') or !PACKAGED)
 {
     $lib_files = scandir(__DIR__ . DS . "lib");
+    sort($lib_files);
     foreach ($lib_files as $file)
     {
         $path = __DIR__ . DS . "lib" . DS . $file;
@@ -1212,6 +4226,7 @@ class Console_Abstract extends Command
         'browser_exec',
         'cache_lifetime',
         'editor_exec',
+        'editor_modify_exec',
         'install_path',
         'step',
         'timezone',
@@ -1240,7 +4255,10 @@ class Console_Abstract extends Command
     public $cache_lifetime = 86400; // Default: 24 hours
 
     protected $__editor_exec = ["Command to open file in editor - %s for filepath placeholder via sprintf"];
-    protected $editor_exec = '/usr/bin/vim "%s" > `tty`';
+    protected $editor_exec = '/usr/bin/vim -c "startinsert" "%s" > `tty`'; // vim in insert mode
+
+    protected $__editor_modify_exec = ["Command to open file in editor to review/modify existing text - %s for filepath placeholder via sprintf"];
+    protected $editor_modify_exec = '/usr/bin/vim "%s" > `tty`'; // vim in normal mode
 
     protected $__install_path = ["Install path of this tool", "string"];
 	public $install_path = DS . "usr" . DS . "local" . DS . "bin";
@@ -1278,6 +4296,10 @@ class Console_Abstract extends Command
 
     protected $__verbose = "Enable verbose output";
 	public $verbose = false;
+
+    // HJSON Data
+    protected $____WSC__ = "HJSON Data for config file";
+    public $__WSC__ = null;
 
     /**
      * Config paths
@@ -1640,10 +4662,19 @@ class Console_Abstract extends Command
     protected $___version = [
         "Output version information"
     ];
-    public function version()
+    public function version($output=true)
     {
         $class = get_called_class();
-        $this->output($class::SHORTNAME . ' version ' . $class::VERSION);
+        $version_string = $class::SHORTNAME . ' version ' . $class::VERSION;
+
+        if ($output)
+        {
+            $this->output($version_string);
+        }
+        else
+        {
+            return $version_string;
+        }
     }
 
     /**
@@ -1814,7 +4845,7 @@ class Console_Abstract extends Command
      */
     public function exec($command, $error=false)
     {
-        $this->log("exec: $command 2>&1");
+        $this->log("exec: $command");
         exec($command, $output, $return);
         $output = empty($output) ? "" : "\n\t" . implode("\n\t", $output);
         if ($return)
@@ -1970,7 +5001,9 @@ class Console_Abstract extends Command
             var_dump($data);
             $data = ob_get_clean();
         }
-        $data = trim($data, " \t\n\r\0\x0B");
+        // Trimming breaks areas where we *want* extra white space
+        // - must be done explicitly instead, or modify to pass in as an option maybe...
+        // $data = trim($data, " \t\n\r\0\x0B");
         return $data;
     }
 
@@ -1980,6 +5013,8 @@ class Console_Abstract extends Command
      */
     public function colorize($string, $foreground=null, $background=null, $other=[])
     {
+        if (empty($foreground) and empty($background) and empty($other)) return $string;
+
         $colored_string = "";
         $colored = false;
 
@@ -2154,11 +5189,34 @@ class Console_Abstract extends Command
             {
                 $this->warn("Invalid selection $entry");
             }
+            $this->output("Enter number or part of selection");
             $entry = $this->input($message, $default);
             if ($q_to_quit and (strtolower(trim($entry)) == 'q'))
             {
                 $this->warn('Selection Canceled');
                 exit;
+            }
+
+            if (!is_numeric($entry))
+            {
+                $filtered_items = [];
+
+                foreach ($list as $item)
+                {
+                    if (stripos($item, $entry) !== false)
+                    {
+                        $filtered_items[] = $item;
+                    }
+                }
+
+                if (count($filtered_items) == 1)
+                {
+                    return $filtered_items[0];
+                }
+                elseif (!empty($filtered_items))
+                {
+                    return $this->select($filtered_items, $message, 0, $q_to_quit);
+                }
             }
 
             // Make sure it's really a good entry
@@ -2191,7 +5249,7 @@ class Console_Abstract extends Command
      * Edit some text in external editor
      * @param $text to edit
      */
-    public function edit($text="", $filename=null)
+    public function edit($text="", $filename=null, $modify=false)
     {
         if (is_null($filename))
         {
@@ -2199,7 +5257,7 @@ class Console_Abstract extends Command
         }
         $filepath = $this->setTempContents($filename, $text);
 
-        $command = sprintf($this->editor_exec, $filepath);
+        $command = sprintf( ($modify ? $this->editor_modify_exec : $this->editor_exec), $filepath);
         $this->exec($command, true);
 
         return $this->getTempContents($filename);
@@ -2291,7 +5349,7 @@ class Console_Abstract extends Command
         if (is_null($this->config_file))
         {
             $config_dir = $this->getConfigDir();
-            $this->config_file = $config_dir . DS . 'config.json';
+            $this->config_file = $config_dir . DS . 'config.hjson';
         }
 
         return $this->config_file;
@@ -2366,12 +5424,25 @@ class Console_Abstract extends Command
 
         try
         {
+            // Move old json file to hjson if needed
+            if (!is_file($config_file))
+            {
+                $old_json_config_file = str_ireplace('.hjson', '.json', $config_file);
+                if (is_file($old_json_config_file))
+                {
+                    if ( ! rename($old_json_config_file, $config_file) )
+                    {
+                        $this->warn("Old json config file found, but couldn't rename it.\nTo keep your config settings, move '$old_json_config_file' to '$config_file'.\nIf you continue now, a new config file will be created with default values at '$config_file'.", true);
+                    }
+                }
+            }
+
             // Loading specific config values from file
             if (is_file($config_file))
             {
                 // $this->log("Loading config file - $config_file");
                 $json = file_get_contents($config_file);
-                $config = json_decode($json, true);
+                $config = $this->json_decode($json, true);
                 if (empty($config))
                 {
                     $this->error("Likely syntax error: $config_file");
@@ -2423,8 +5494,34 @@ class Console_Abstract extends Command
                 mkdir($config_dir, 0755);
             }
 
-            // Rewrite config - pretty print
-            $json = json_encode($this->config_to_save, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            // Update comments in config data
+            if (empty($this->config_to_save['__WSC__']))
+            {
+                $this->config_to_save['__WSC__'] = [];
+                $this->config_to_save['__WSC__']['c'] = [];
+                $this->config_to_save['__WSC__']['o'] = [];
+            }
+
+            $this->config_to_save['__WSC__']['c'][" "] = "\n    /**\n     * " . $this->version(false) . " configuration\n     */\n";
+            foreach ($this->config_to_save as $key => $value)
+            {
+                if ($key != '__WSC__')
+                {
+                    $help = $this->_help_var($key, 'option');
+                    if (empty($help)) continue;
+
+                    $help = $this->_help_param($help);
+                    $type = $help[1];
+                    $info = $help[0];
+                    
+                    $value = " // ($type) $info";
+                }
+
+                $this->config_to_save['__WSC__']['c'][$key] = $value;
+            }
+
+            // Rewrite config file
+            $json = $this->json_encode($this->config_to_save);
             file_put_contents($config_file, $json);
 
             // Fix permissions if needed
@@ -2433,8 +5530,6 @@ class Console_Abstract extends Command
                 $success = true;
                 $success = ($success and chown($config_dir, $this->logged_in_user));
                 $success = ($success and chown($config_file, $this->logged_in_user));
-                # $success = ($success and chgrp($config_dir, $this->logged_in_user));
-                # $success = ($success and chgrp($config_file, $this->logged_in_user));
 
                 if (!$success)
                 {
@@ -2504,7 +5599,10 @@ class Console_Abstract extends Command
             }
             else if (is_array($value))
             {
-                $value = array_map('trim', $value);
+                if (isset($value[0]) and is_string($value[0]))
+                {
+                    $value = array_map('trim', $value);
+                }
             }
         }
 
@@ -2542,7 +5640,10 @@ class Console_Abstract extends Command
         if (in_array($key, $public_properties))
         {
 
-            $value = preg_replace('/^\~/', $this->getHomeDir(), $value);
+            if (is_string($value))
+            {
+                $value = preg_replace('/^\~/', $this->getHomeDir(), $value);
+            }
 
             $this->{$key} = $value;
 
@@ -2769,6 +5870,7 @@ class Console_Abstract extends Command
             'line_buffer' => 1,
             'output' => true,
             'include_page_info' => true,
+            'fill_height' => true,
         ], $options);
 
         // Split into lines if needed
@@ -2778,6 +5880,17 @@ class Console_Abstract extends Command
         }
 
         $max_width = $this->getTerminalWidth();
+
+        $max_height = $this->getTerminalHeight();
+        $max_height = $max_height - $options['line_buffer'];
+        $max_height = $max_height - 2; // for start/end line breaks
+        if ($options['include_page_info'])
+        {
+            $max_height = $max_height - 2; // for page info and extra line break
+        }
+
+        if (!is_array($content)) $content = explode("\n");
+        $content = array_values($content);
 
         // Pre-wrap lines if specified, to make sure pagination works based on real number of lines
         if ($options['wrap'])
@@ -2796,14 +5909,6 @@ class Console_Abstract extends Command
         }
 
         $content_length = count($content);
-
-        $max_height = $this->getTerminalHeight();
-        $max_height = $max_height - $options['line_buffer'];
-        $max_height = $max_height - 2; // for start/end line breaks
-        if ($options['include_page_info'])
-        {
-            $max_height = $max_height - 2; // for page info and extra line break
-        }
 
         $are_prev = false;
         if ($options['starting_line'] > 1)
@@ -2830,15 +5935,27 @@ class Console_Abstract extends Command
             $output[]= str_pad("", $max_width, "=");
         }
 
-        if (!is_array($content)) $content = explode("\n");
-        $content = array_values($content);
-
         $l = $options['starting_line'] - 1;
         $final_line = $options['starting_line'];
-        while ($height < $max_height and $l < ($content_length))
+        while ($height < $max_height)
         {
-            $final_line = $l + 1;
-            $line = $content[$l];
+            if ($l < ($content_length))
+            {
+                $final_line = $l + 1;
+                $line = $content[$l];
+            }
+            else
+            {
+                if ($options['fill_height'])
+                {
+                    $line = "";
+                }
+                else
+                {
+                    break;
+                }
+            }
+
 
             if (!is_string($line)) $this->error("Bad type for line $l of content - string expected");
             if (strlen($line) > $max_width)
@@ -2943,7 +6060,7 @@ class Console_Abstract extends Command
     }
 
     protected $_terminal_height = null;
-    protected function getTerminalHeight($fresh=false)
+    public function getTerminalHeight($fresh=false)
     {
         if (is_null($this->_terminal_height))
         {
@@ -2967,7 +6084,7 @@ class Console_Abstract extends Command
     }
 
     protected $_terminal_width = null;
-    protected function getTerminalWidth($fresh=false)
+    public function getTerminalWidth($fresh=false)
     {
         if (is_null($this->_terminal_width))
         {
@@ -2988,6 +6105,247 @@ class Console_Abstract extends Command
         }
 
         return $this->_terminal_width;
+    }
+
+    /**
+     * Parse HTML for output to terminal
+     * Supporting:
+     *  - Bold
+     *  - Italic (showing as dim)
+     *  - Links (Underlined with link in parentheses)
+     *  - Unordered Lists ( - )
+     *  - Ordered Lists ( 1. ) 
+     *  - Hierarchical lists (via indentation)
+     * Not Yet:
+     *  - Text colors
+     *  - Underline styles
+     *  - Indentation styles
+     *  - Less commonly supported terminal styles
+     */
+    public function parseHtmlForTerminal($dom, $depth=0, $prefix="")
+    {
+        $output = "";
+
+        if (is_string($dom))
+        {
+            // Deal with odd UTF8 characters that sneak in sometimes
+            $dom = utf8_decode($dom);
+
+            $tmp = new DOMDocument();
+            if (! @$tmp->loadHTML(trim($dom)))
+            {
+                return $dom;
+
+                var_dump($dom);
+                $this->error("Failed to parse HTML");
+            }
+            $dom = $tmp;
+        }
+
+        if (!is_object($dom) or !in_array(get_class($dom), ["DOMDocumentType", "DOMDocument", "DOMElement"]))
+        {
+            $type = is_object($dom) ? get_class($dom) : gettype($dom);
+            $this->error("Invalid type passed to parseHtmlForTerminal - $type");
+        }
+         
+        foreach ($dom->childNodes as $child_index => $node)
+        {
+            $_output = ""; // output for this child
+            $_prefix = $prefix; // prefix for this child's children - start with current prefix, passed to function
+            $_suffix = ""; // suffix for end of this child
+
+            // Note coloring if needed
+            $color_foreground = null;
+            $color_background = null;
+            $color_other = null;
+
+            switch($node->nodeName)
+            {
+                case 'a':
+                    $color_other = 'underline';
+                    $href = trim($node->getAttribute('href'));
+                    $content = trim($node->nodeValue);
+                    if (strtolower(trim($href,"/")) != strtolower(trim($content,"/")))
+                    {
+                        $_suffix = " [$href]";
+                    }
+                    break;
+
+                case 'br':
+                case 'p':
+                    $_output.= "\n" . $_prefix;
+                    break;
+
+                case 'b':
+                case 'strong':
+                    $color_other = 'bold';
+                    break;
+
+                case 'em':
+                    $color_other = 'dim';
+                    break;
+            
+                case 'ol':
+                case 'ul':
+                    $_output.="\n";
+                    break;
+
+                case 'li':
+
+                    // Output number for ol child, otherwise, default to "-"
+                    $list_char = " - ";
+                    if ($dom->nodeName == "ol")
+                    {
+                        $list_char = " " . ($child_index + 1) . ". ";
+                    }
+
+                    $_output.= $_prefix . $list_char;
+
+                    // Update prefix for child elements
+                    $_prefix = $_prefix . str_pad("", strlen($list_char));
+
+                    $_suffix = "\n";
+
+                    break;
+
+                case '#text':
+                    $_output.= $node->nodeValue;
+                    break;
+
+                default:
+                    break;
+            }
+
+            // Output for Debugging
+            if ($this->verbose)
+            {
+                $this->log(str_pad("", $depth*2) . $node->nodeName.':"'.$node->nodeValue.'"');
+
+                $_output.="[" . $node->nodeName . "]";
+            }
+
+            if ($node->hasChildNodes())
+            {
+                $_output.= $this->parseHtmlForTerminal($node, $depth+1, $_prefix);
+            }
+
+            if ($this->verbose)
+            {
+                // For Debugging
+                $_output.="[/" . $node->nodeName . "]";
+            }
+
+            // Decorate the output as needed
+            $_output = $this->colorize($_output, $color_foreground, $color_background, $color_other);
+            
+            $output.= $_output . $_suffix;
+        }
+
+        //$output = str_replace("\u{00a0}", " ", $output);
+        $output = str_replace("\r", "\n", $output);
+        $output = preg_replace('/\n(\s*\n){2,}/', "\n\n", $output);
+
+        return htmlspecialchars_decode($output);
+    }
+
+    /**
+     * Parse Markdown to HTML
+     * - uses Parsedown
+     * - uses some defaults based on common use
+     * - alternatively, can call Parsedown directly
+     */
+    public function parseMarkdownToHtml($text)
+    {
+        $html = Parsedown::instance()
+            ->setBreaksEnabled(true)
+            ->setMarkupEscaped(true)
+            ->setUrlsLinked(false)
+            ->text($text);
+        return $html;
+    }
+
+    /**
+     * JSON encode & decode, using HJSON
+     */
+    public function json_decode($json, $options=[])
+    {
+        $this->log("Running json_decode on console_abstract");
+
+        // mimic json_decode behavior
+        if ($options === true)
+        {
+            $options = ['assoc' => true];
+        }
+
+        // default to preserve comments and whitespace
+        if (!isset($options['keepWsc']))
+        {
+            $options['keepWsc'] = true;
+        }
+
+        $parser = new HJSONParser;
+        $data = $parser->parse($json, $options);
+        $this->_json_cleanup($data);
+        return $data;
+    }
+    public function json_encode($data, $options=[])
+    {
+        $this->log("Running json_encode on console_abstract");
+
+        $options = array_merge([
+            'keepWsc' => true,
+            'bracesSameLine' => true,
+            'quotes' => 'always',
+            'space' => 4,
+            'eol' => PHP_EOL,
+        ], $options);
+
+        // default to preserve comments and whitespace
+        if (!isset($options['keepWsc']))
+        {
+            $options['keepWsc'] = true;
+        }
+
+        if (empty($options['keepWsc']))
+        {
+            unset($data['__WSC__']);
+        }
+        else
+        {
+            if (!empty($data['__WSC__']))
+            {
+                $data['__WSC__'] = (object) $data['__WSC__'];
+                if (!empty($data['__WSC__']->c))
+                {
+                    $data['__WSC__']->c = (object) $data['__WSC__']->c;
+                }
+            }
+        }
+
+        $this->_json_cleanup($data);
+
+        $stringifier = new HJSONStringifier;
+        $json = $stringifier->stringify($data, $options);
+        return $json;
+    }
+    protected function _json_cleanup(&$data)
+    {
+        if (is_iterable($data))
+        {
+            foreach ($data as $key => &$value)
+            {
+                if (is_object($value))
+                {
+                    unset($value->__WSC__);
+                }
+                if (is_array($value))
+                {
+                    unset($value['__WSC__']);
+                }
+
+                $this->_json_cleanup($value);
+            }
+        }
     }
 
     // Prevent infinite loop of magic method handling
@@ -3421,7 +6779,7 @@ class PSSH_Config
             {
                 $raw = file_get_contents($this->data['pssh']['team_keys']);
 
-                $data = json_decode($raw, true);
+                $data = $this->json_decode($raw, true);
                 if ($data)
                 {
                     $this->team_keys = $data;
@@ -3529,6 +6887,9 @@ class PSSH_Config
             }
 
             $json = file_get_contents($path);
+
+            $this->log("Decoding data from $path...");
+            // $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
             $decoded = json_decode($json, true);
             if (empty($decoded))
             {
@@ -3721,7 +7082,7 @@ class PSSH_Config
                 // - we are making the bold assumption that there are less than 1 billion host entries
                 $levity = ($levity * 1000000000) + $h;
 
-                $results[$levity] = $host;
+                $results[$levity] = [$alias, $host];
             }
             
             $h++;
@@ -3729,7 +7090,16 @@ class PSSH_Config
 
         krsort($results);
 
-        return array_values($results);
+        // Re-key by alias
+        $return = [];
+        foreach ($results as $result)
+        {
+            $alias = $result[0];
+            $host = $result[1];
+            $return[$alias] = $host;
+        }
+
+        return $return;
     }
 
     /**
@@ -3738,7 +7108,16 @@ class PSSH_Config
      */
     public function writeJSON($path)
     {
-		$json = json_encode($this->data, JSON_PRETTY_PRINT);
+        /*
+        if (preg_match("/.hjson$/", $path))
+        {
+            $json = $this->json_encode($this->data);
+        }
+        else
+        {
+         */
+            $json = json_encode($this->data, JSON_PRETTY_PRINT);
+        //}
 		file_put_contents($path, $json);
     }
 
@@ -3834,18 +7213,6 @@ class PSSH_Config
     }
 
     /**
-     * Pass through functions for shell
-     */
-    public function __call($method, $arguments)
-    {
-        $shell_call = [$this->shell, $method];
-        if (is_callable($shell_call))
-        {
-            return call_user_func_array($shell_call, $arguments);
-        }
-    }
-
-    /**
      * Make sure alias is unique, add 1/2/3, etc as needed to ensure
      */
     public function autoAlias($alias)
@@ -3922,6 +7289,18 @@ class PSSH_Config
         return $hostname;
     }
 
+    /**
+     * Pass through functions for shell
+     */
+    public function __call($method, $arguments)
+    {
+        $shell_call = [$this->shell, $method];
+        if (is_callable($shell_call))
+        {
+            $this->shell->log(" __call: Attempting to call $method on separate class...");
+            return call_user_func_array($shell_call, $arguments);
+        }
+    }
 }
 PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
 ?>
@@ -3931,7 +7310,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.2.0";
+    const VERSION = "2.3.0";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -4239,8 +7618,8 @@ class PSSH extends Console_Abstract
 
         while (true)
         {
-            $host_json = $this->edit($host_json, $alias . ".json");
-            $host_data = json_decode($host_json, true);
+            $host_json = $this->edit($host_json, $alias . ".json", "modify");
+            $host_data = $this->json_decode($host_json, ['assoc' => true, 'keepWsc' => false]);
             if (empty($host_data))
             {
                 $this->warn("Invalid JSON - check your syntax");
@@ -4438,8 +7817,8 @@ ____KEYS____;
                             'keys' => 'i',
                             'callback' => function ($list_instance)
                             {
-                                $focused_value = $list_instance->getFocusedValue();
-                                $this->init_host($focused_value['pssh']['alias']);
+                                $focused_key = $list_instance->getFocusedKey();
+                                $this->init_host($focused_key);
                             },
                         ],
                         'delete_host' => [
@@ -4447,8 +7826,8 @@ ____KEYS____;
                             'keys' => 'd',
                             'callback' => function ($list_instance)
                             {
-                                $focused_value = $list_instance->getFocusedValue();
-                                $host_alias = $focused_value['pssh']['alias'];
+                                $focused_key = $list_instance->getFocusedKey();
+                                $host_alias = $focused_key;
                                 if ($this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n"))
                                 {
                                     $this->delete_host($host_alias);
@@ -4461,8 +7840,8 @@ ____KEYS____;
                             'keys' => 'e',
                             'callback' => function ($list_instance)
                             {
-                                $focused_value = $list_instance->getFocusedValue();
-                                $this->edit_host($focused_value['pssh']['alias']);
+                                $focused_key = $list_instance->getFocusedKey();
+                                $this->edit_host($focused_key);
                             },
                             'reload' => true,
                         ],

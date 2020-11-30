@@ -428,8 +428,8 @@ class PSSH_Config
             $json = file_get_contents($path);
 
             $this->log("Decoding data from $path...");
-            // $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
-            $decoded = json_decode($json, true);
+            $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
+            //$decoded = json_decode($json, true);
             if (empty($decoded))
             {
                 $this->error("Likely Syntax Error: $path");

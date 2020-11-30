@@ -16,6 +16,14 @@ if (!defined('CONSOLE_ABSTRACT_PATH')) define('CONSOLE_ABSTRACT_PATH',
     'console_abstract.php'
 );
 
+if (!is_file(CONSOLE_ABSTRACT_PATH))
+{
+    echo "ERROR: Console Abstract not found - '" . CONSOLE_ABSTRACT_PATH . "'\n";
+    echo " - Symlink your pcon folder to '" . __DIR__ . DIRECTORY_SEPARATOR . "pcon' to resolve this issue\n";
+    echo "----------------------------------------\n";
+    throw new Exception("Missing console abstract");
+}
+
 # Paths to other includes
 $src_includes = array(
     __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'config_keys.php',

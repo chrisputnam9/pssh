@@ -4,7 +4,7 @@
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.3.0";
+    const VERSION = "2.3.1";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -288,6 +288,7 @@ class PSSH extends Console_Abstract
         // Sync before - to get latest data
         $this->sync();
 
+        $host_data = false;
         $host_json = false;
 
         foreach ($paths as $config_path)
@@ -303,17 +304,18 @@ class PSSH extends Console_Abstract
             }
         }
 
-        if (empty($host_json))
+        if (empty($host_data) or empty($host_json))
         {
-            $this->error("Host '$alias' not found in config files");
+            $this->error("Host '$alias' not found in config files or invalid data");
         }
 
         $original_json = $host_json;
 
         while (true)
         {
-            $host_json = $this->edit($host_json, $alias . ".json", "modify");
-            $host_data = $this->json_decode($host_json, ['assoc' => true, 'keepWsc' => false]);
+            $host_hjson = $this->json_encode($host_data);
+            $host_hjson = $this->edit($host_hjson, $alias . ".hjson", "modify");
+            $host_data = $this->json_decode($host_hjson, ['assoc' => true, 'keepWsc' => false]);
             if (empty($host_data))
             {
                 $this->warn("Invalid JSON - check your syntax");

@@ -313,12 +313,13 @@ class PSSH_Config
     {
         if (is_null($this->team_keys))
         {
+            $this->log("Reading in team keys...");
             $this->team_keys = array();
             if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys']))
             {
                 $raw = file_get_contents($this->data['pssh']['team_keys']);
 
-                $data = $this->json_decode($raw, true);
+                $data = json_decode($raw, true);
                 if ($data)
                 {
                     $this->team_keys = $data;

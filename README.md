@@ -5,11 +5,11 @@ Quick getting started information for the most common use case.
 ## Latest Version
 See notes to follow below in case you are upgrading from a much earlier version.
 
-### Download Latest Version (2.3.1):
+### Download Latest Version (2.3.2):
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
 ### Latest Version Hash (md5):
-bacd6ca6e6a81c2f83a9d00a46e67502
+378a5cce4c22ff14c4a3b10f7ccb6f98
 
 ## Install PSSH
 1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php)

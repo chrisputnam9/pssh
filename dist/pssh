@@ -3,8 +3,8 @@
 ##################################################
 # Config
 ##################################################
-define('ERRORS', false);
-define('PACKAGED', true);
+if (!defined('ERRORS')) define('ERRORS', false);
+if (!defined('PACKAGED')) define('PACKAGED', true);
 
 // Note: leave this for packaging ?>
 <?php
@@ -4220,14 +4220,14 @@ else
     ini_set('display_errors', 0);
 }
 
-if (!defined('PACKAGED') or !PACKAGED)
+if (!defined('PACKAGED') or !PACKAGED and is_dir(__DIR__ . DS . "lib"))
 {
     $lib_files = scandir(__DIR__ . DS . "lib");
     sort($lib_files);
     foreach ($lib_files as $file)
     {
         $path = __DIR__ . DS . "lib" . DS . $file;
-        if (is_file($path))
+        if (is_file($path) and preg_match('/\.php$/', $path))
         {
             require($path);
         }
@@ -7370,7 +7370,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.3.2";
+    const VERSION = "2.4.0";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';

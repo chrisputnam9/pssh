@@ -34,7 +34,7 @@ class PSSH extends Console_Abstract
     ];
 
     // Config Variables
-    protected $__json_config_paths = ["Main JSON config file paths - first one will be synced by default, others will be ignored by default", "string"];
+    protected $__json_config_paths = ["Main JSON config file paths", "string"];
     public $json_config_paths = [];
 
     protected $__json_import_path = ["Default JSON config import path", "string"];

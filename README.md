@@ -81,58 +81,58 @@ will now automatically check for updates!
 
     pssh <method> (argument1) (argument2) ... [options]
 
-    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | METHOD                                         | INFO                                                                                                                                                                                      |
-    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | add                                            | Add new SSH host - interactive, or specify options                                                                                                                                        |
-    | backup                                         | Backup a file or files to the configured backup folder                                                                                                                                    |
-    | clean                                          | Clean json config files                                                                                                                                                                   |
-    | clear                                          | Clear the screen                                                                                                                                                                          |
-    | delete_host                                    | Delete host                                                                                                                                                                               |
-    | edit_host                                      | Edit host - modify config in your editor                                                                                                                                                  |
-    | eval_file                                      | Evaluate a php script file, which will have access to all internal methods via '$this'                                                                                                    |
-    | exit                                           | Exit the command prompt                                                                                                                                                                   |
-    | export                                         | Export JSON config to SSH config file                                                                                                                                                     |
-    | help                                           | Shows help/usage information.                                                                                                                                                             |
-    | import                                         | Import SSH config data into JSON                                                                                                                                                          |
-    | init_host                                      | Initialize host - interactive, or specify options                                                                                                                                         |
-    | install                                        | Install a packaged PHP console tool                                                                                                                                                       |
-    | list                                           | List all hosts                                                                                                                                                                            |
-    | merge                                          | Merge config from one JSON file into another                                                                                                                                              |
-    | prompt                                         | Show interactive prompt                                                                                                                                                                   |
-    | search                                         | Search for host configuration                                                                                                                                                             |
-    | sync                                           | Sync config files based on 'sync' config/option value                                                                                                                                     |
-    | update                                         | Update an installed PHP console tool                                                                                                                                                      |
-    | version                                        | Output version information                                                                                                                                                                |
-    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------------------------------------------------------------------------
+    | METHOD                        | INFO                                                                                                                |
+    -------------------------------------------------------------------------------------------------------------------------------------------------------
+    | add                           | Add new SSH host - interactive, or specify options                                                                  |
+    | backup                        | Backup a file or files to the configured backup folder                                                              |
+    | clean                         | Clean json config files                                                                                             |
+    | clear                         | Clear the screen                                                                                                    |
+    | delete_host                   | Delete host                                                                                                         |
+    | edit_host                     | Edit host - modify config in your editor                                                                            |
+    | eval_file                     | Evaluate a php script file, which will have access to all internal methods via '$this'                              |
+    | exit                          | Exit the command prompt                                                                                             |
+    | export                        | Export JSON config to SSH config file                                                                               |
+    | help                          | Shows help/usage information.                                                                                       |
+    | import                        | Import SSH config data into JSON                                                                                    |
+    | init_host                     | Initialize host - interactive, or specify options                                                                   |
+    | install                       | Install a packaged PHP console tool                                                                                 |
+    | list                          | List all hosts                                                                                                      |
+    | merge                         | Merge config from one JSON file into another                                                                        |
+    | prompt                        | Show interactive prompt                                                                                             |
+    | search                        | Search for host configuration                                                                                       |
+    | sync                          | Sync config files based on 'sync' config/option value                                                               |
+    | update                        | Update an installed PHP console tool                                                                                |
+    | version                       | Output version information                                                                                          |
+    -------------------------------------------------------------------------------------------------------------------------------------------------------
     To get more help for a specific method:  pssh help <method>
 
-    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | OPTION                                         | TYPE                                                                  | INFO                                                                                                              |
-    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | ----WSC--                                      | (boolean)                                                             | HJSON Data for config file                                                                                        |
-    | --allow-root                                   | (boolean)                                                             | OK to run as root                                                                                                 |
-    | --backup-age-limit                             | (string)                                                              | Age limit of backups to keep- number of days                                                                      |
-    | --backup-dir                                   | (string)                                                              | Location to save backups                                                                                          |
-    | --cache-lifetime                               | (boolean)                                                             | Default time to cache data in seconds                                                                             |
-    | --cli-script                                   | (string)                                                              | CLI script to install on hosts during init                                                                        |
-    | --install-path                                 | (string)                                                              | Install path of this tool                                                                                         |
-    | --json-config-paths                            | (string)                                                              | Main JSON config file paths - first one will be synced by default, others will be ignored by default              |
-    | --json-import-path                             | (string)                                                              | Default JSON config import path                                                                                   |
-    | --ssh-config-path                              | (string)                                                              | Default SSH config path                                                                                           |
-    | --ssl-check                                    | (boolean)                                                             | Whether to check SSL certificates with curl                                                                       |
-    | --stamp-lines                                  | (boolean)                                                             | Stamp output lines                                                                                                |
-    | --step                                         | (boolean)                                                             | Enable stepping points                                                                                            |
-    | --sync                                         | (string)                                                              | Git SSH URL to sync config data                                                                                   |
-    | --timezone                                     | (string)                                                              | Timezone - from http://php.net/manual/en/timezones.                                                               |
-    | --update-auto                                  | (int)                                                                 | How often to automatically check for an update (seconds, 0 to disable)                                            |
-    | --update-check-hash                            | (binary)                                                              | Whether to check hash of download when updating                                                                   |
-    | --update-last-check                            | (string)                                                              | Formatted timestap of last update check                                                                           |
-    | --update-version-url                           | (string)                                                              | URL to check for latest version number info                                                                       |
-    | --verbose                                      | (boolean)                                                             | Enable verbose output                                                                                             |
-    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------------------------------------------------------------------------
+    | OPTION                        | TYPE                                       | INFO                                                                   |
+    -------------------------------------------------------------------------------------------------------------------------------------------------------
+    | ----WSC--                     | (boolean)                                  | HJSON Data for config file                                             |
+    | --allow-root                  | (boolean)                                  | OK to run as root                                                      |
+    | --backup-age-limit            | (string)                                   | Age limit of backups to keep- number of days                           |
+    | --backup-dir                  | (string)                                   | Location to save backups                                               |
+    | --cache-lifetime              | (boolean)                                  | Default time to cache data in seconds                                  |
+    | --cli-script                  | (string)                                   | CLI script to install on hosts during init                             |
+    | --install-path                | (string)                                   | Install path of this tool                                              |
+    | --json-config-paths           | (string)                                   | Main JSON config file paths                                            |
+    | --json-import-path            | (string)                                   | Default JSON config import path                                        |
+    | --ssh-config-path             | (string)                                   | Default SSH config path                                                |
+    | --ssl-check                   | (boolean)                                  | Whether to check SSL certificates with curl                            |
+    | --stamp-lines                 | (boolean)                                  | Stamp output lines                                                     |
+    | --step                        | (boolean)                                  | Enable stepping points                                                 |
+    | --sync                        | (string)                                   | Git SSH URL to sync config data                                        |
+    | --timezone                    | (string)                                   | Timezone - from http://php.net/manual/en/timezones.                    |
+    | --update-auto                 | (int)                                      | How often to automatically check for an update (seconds, 0 to disable) |
+    | --update-check-hash           | (binary)                                   | Whether to check hash of download when updating                        |
+    | --update-last-check           | (string)                                   | Formatted timestap of last update check                                |
+    | --update-version-url          | (string)                                   | URL to check for latest version number info                            |
+    | --verbose                     | (boolean)                                  | Enable verbose output                                                  |
+    -------------------------------------------------------------------------------------------------------------------------------------------------------
     Use no- to set boolean option to false - eg. --no-stamp-lines
-    ==============================================================================================================================================================================================================================================
+    =======================================================================================================================================================
 
 # Miscellaneous
 Many thanks to all who've helped with suggestions, testing, and motivation!

@@ -134,6 +134,9 @@ will now automatically check for updates!
     Use no- to set boolean option to false - eg. --no-stamp-lines
     =======================================================================================================================================================
 
+# Troubleshooting & Common Issues
+[General PCon issues which may apply](https://github.com/chrisputnam9/pcon#troubleshooting--common-issues)
+
 # Miscellaneous
 Many thanks to all who've helped with suggestions, testing, and motivation!
 

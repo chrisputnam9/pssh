@@ -606,7 +606,7 @@ class PSSH_Config
             {
                 foreach ($patterns as $p => $pattern)
                 {
-                    if (preg_match_all("`" . $pattern . "`", $target, $matches))
+                    if (!empty($target) and preg_match_all("`" . $pattern . "`", $target, $matches))
                     {
                         $levity+= ( ($p+1) * 10)  + ($t+1);
                         continue; //quit as soon as we have a match

@@ -1192,7 +1192,7 @@ if (!class_exists("HJSONParser"))
         public function parse($source, $options = [])
         {
             $this->keepWsc = $options && isset($options['keepWsc']) && $options['keepWsc'];
-            $this->text_array = preg_split("//u", $source, null, PREG_SPLIT_NO_EMPTY);
+            $this->text_array = preg_split("//u", $source, -1, PREG_SPLIT_NO_EMPTY);
             $this->text_length_chars = count($this->text_array);
 
             $data = $this->rootValue();
@@ -4213,6 +4213,7 @@ if (defined('ERRORS') and ERRORS)
     echo "* Displaying all errors & warnings *\n";
     echo "************************************\n\n";
     ini_set('display_errors', 1);
+    ini_set('html_errors', 0);
 }
 else
 {
@@ -4250,6 +4251,9 @@ if (!class_exists("Console_Abstract"))
         const DEFAULT_WIDTH = 130; // characters - if not able to dynamically determine
         const COL1_WIDTH = 20; // percentage of full width
         const COL2_WIDTH = 50; // percentage of full width - col1 + col2
+
+        // Line break for editing text
+        const EDIT_LINE_BREAK = "--------------------------------------------------";
 
         /**
         * Callable Methods
@@ -5222,9 +5226,28 @@ if (!class_exists("Console_Abstract"))
         * @param (array) $list of items to pick from
         * @param (any) $message (none) to show - prompt
         * @param (int) $default (0) index if no input
+        * @param (bool) $q_to_quit (true) enter q to quit select
+        * @param (array) &$preselects ([]) selection entries - will be shifted off one at a time
+        *  - passed by reference, so it can be used through a chain of selects
         */
-        public function select($list, $message=false, $default=0, $q_to_quit=true)
+        public function select($list, $message=false, $default=0, $q_to_quit=true, &$preselects=[], $livefilter=true)
         {
+			/*
+			if ($livefilter)
+			{
+				$this->clear();
+
+				// todo - figure out how to detect backspace & enter
+				// - maybe focus on how to do it in bash
+				while (true) {
+					$char = $this->input("Enter char", null, false, 'single', 'single_hide');
+					if ($char == 'q') die;
+					var_dump($char);
+					echo "\n";
+				}
+
+			}
+			 */
             $list = array_values($list);
             foreach ($list as $i => $item)
             {
@@ -5246,8 +5269,16 @@ if (!class_exists("Console_Abstract"))
                 {
                     $this->warn("Invalid selection $entry");
                 }
-                $this->output("Enter number or part of selection");
-                $entry = $this->input($message, $default);
+                if ( empty($preselects) )
+                {
+                    $this->output("Enter number or part of selection");
+                    $entry = $this->input($message, $default);
+                }
+                else
+                {
+                    $entry = array_shift($preselects);
+                }
+
                 if ($q_to_quit and (strtolower(trim($entry)) == 'q'))
                 {
                     $this->warn('Selection Canceled');
@@ -5272,7 +5303,7 @@ if (!class_exists("Console_Abstract"))
                     }
                     elseif (!empty($filtered_items))
                     {
-                        return $this->select($filtered_items, $message, 0, $q_to_quit);
+                        return $this->select($filtered_items, $message, 0, $q_to_quit, $preselects);
                     }
                 }
 
@@ -6120,7 +6151,7 @@ if (!class_exists("Console_Abstract"))
         protected $_terminal_height = null;
         public function getTerminalHeight($fresh=false)
         {
-            if (is_null($this->_terminal_height))
+            if ($fresh or empty($this->_terminal_height))
             {
                 exec("tput lines", $output, $return);
 
@@ -6144,7 +6175,7 @@ if (!class_exists("Console_Abstract"))
         protected $_terminal_width = null;
         public function getTerminalWidth($fresh=false)
         {
-            if (is_null($this->_terminal_width))
+            if ($fresh or empty($this->_terminal_width))
             {
                 exec("tput cols", $output, $return);
 
@@ -6189,8 +6220,11 @@ if (!class_exists("Console_Abstract"))
                 // Deal with odd UTF8 characters that sneak in sometimes
                 $dom = utf8_decode($dom);
 
+                $dom = trim($dom);
+                if (empty($dom)) return $dom;
+
                 $tmp = new DOMDocument();
-                if (! @$tmp->loadHTML(trim($dom)))
+                if (! @$tmp->loadHTML($dom))
                 {
                     return $dom;
 
@@ -7126,7 +7160,7 @@ class PSSH_Config
             {
                 foreach ($patterns as $p => $pattern)
                 {
-                    if (preg_match_all("`" . $pattern . "`", $target, $matches))
+                    if (!empty($target) and preg_match_all("`" . $pattern . "`", $target, $matches))
                     {
                         $levity+= ( ($p+1) * 10)  + ($t+1);
                         continue; //quit as soon as we have a match
@@ -7370,7 +7404,7 @@ PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.4.0";
+    const VERSION = "2.4.1";
 
     // Name of script and directory to store config
     const SHORTNAME = 'pssh';
@@ -7400,7 +7434,7 @@ class PSSH extends Console_Abstract
     ];
 
     // Config Variables
-    protected $__json_config_paths = ["Main JSON config file paths - first one will be synced by default, others will be ignored by default", "string"];
+    protected $__json_config_paths = ["Main JSON config file paths", "string"];
     public $json_config_paths = [];
 
     protected $__json_import_path = ["Default JSON config import path", "string"];

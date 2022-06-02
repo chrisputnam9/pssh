@@ -1,4 +1,5 @@
 <?php
+
 /**
  * PSSH Config Object
  *  - manage config data
@@ -6,10 +7,10 @@
  */
 class PSSH_Config
 {
-	/**
-	 * Map of keys to preferred case
-	 */
-	public static $CONFIG_KEYS = null;
+    /**
+     * Map of keys to preferred case
+     */
+    public static $CONFIG_KEYS = null;
 
     protected $data = null;
 
@@ -38,7 +39,7 @@ class PSSH_Config
      * - If exact copy of host already is in this config, that counts as success
      * - On failure, host and alias are updated to prep for override
      */
-    public function add(&$alias, &$host, $force=false)
+    public function add(&$alias, &$host, $force = false)
     {
         $hostname = empty($host['ssh']['hostname']) ? null : $host['ssh']['hostname'];
         $user = empty($host['ssh']['user']) ? null : $host['ssh']['user'];
@@ -57,8 +58,7 @@ class PSSH_Config
         $existing_config_aliases = [];
         $existing_config_alias = [];
         $existing_config = [];
-        if (!is_null($hostname) and !is_null($user))
-        {
+        if (!is_null($hostname) and !is_null($user)) {
             // should be only one, so let's just look at the first one
             $existing_config_aliases = array_keys($existing['hostname'][$user]);
             $existing_config_alias = array_shift($existing_config_aliases);
@@ -67,24 +67,19 @@ class PSSH_Config
 
         $override_host = [];
 
-        if (!empty($existing_config) and !$force)
-        {
+        if (!empty($existing_config) and !$force) {
             // Remove info from config that's identical to existing
             $override_host = $this->host_diff($host, $existing_config);
-            
+
             // New alias for same config?
             if (
                 empty($override_host['pssh']['alias']) and
                 empty($existing_alias[$alias])
-            )
-            {
+            ) {
                 $override_host['pssh']['alias'] = $alias;
             }
-            
-        }
-        else// no config match, or forcing override
+        } else // no config match, or forcing override
         {
-
             $alias = $this->autoAlias($alias);
 
             $this->data['hosts'][$alias] = $host;
@@ -92,8 +87,7 @@ class PSSH_Config
             return true;
         }
 
-        if (empty($override_host))
-        {
+        if (empty($override_host)) {
             return true;
         }
 
@@ -112,8 +106,7 @@ class PSSH_Config
     {
         $init = $this->initData();
 
-		if (!empty($this->data['ssh']))
-        {
+        if (!empty($this->data['ssh'])) {
             ksort($this->data['ssh']);
         }
 
@@ -121,35 +114,29 @@ class PSSH_Config
 
         $final_map = [];
 
-        foreach ($this->data['hosts'] as $alias => &$host)
-        {
+        foreach ($this->data['hosts'] as $alias => &$host) {
             $hostname = empty($host['ssh']['hostname']) ? false : $host['ssh']['hostname'];
 
             // Set up alias
-            if (empty($host['pssh']['alias']))
-            {
+            if (empty($host['pssh']['alias'])) {
                 $host['pssh']['alias'] = $alias;
             }
 
             $pssh_alias = $host['pssh']['alias'];
-            if (!isset($final_map[$pssh_alias]))
-            {
+            if (!isset($final_map[$pssh_alias])) {
                 $final_map[$pssh_alias] = [];
             }
 
-            $final_map[$pssh_alias][]= $alias;
+            $final_map[$pssh_alias][] = $alias;
 
-            if (!empty($hostname))
-            {
+            if (!empty($hostname)) {
                 $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname'], $host['pssh']);
             }
         }
 
-        foreach ($final_map as $final => $keys)
-        {
+        foreach ($final_map as $final => $keys) {
             $c = count($keys);
-            if ($c > 1)
-            {
+            if ($c > 1) {
                 $this->warn("$c hosts using alias '$final' - " . implode(", ", $keys));
             }
         }
@@ -181,9 +168,9 @@ class PSSH_Config
     public function find($search)
     {
         // The info to search by
-        $alias=null;
-        $hostname=null;
-        $user=null;
+        $alias = null;
+        $hostname = null;
+        $user = null;
 
         $return = [
             'alias' => [],
@@ -191,60 +178,50 @@ class PSSH_Config
         ];
 
         // String? Assume it's alias
-        if (is_string($search))
-        {
+        if (is_string($search)) {
             $alias = $search;
         }
 
         // Parse out key values
-        if (is_array($search))
-        {
+        if (is_array($search)) {
             $alias = empty($search['alias']) ? null : trim($search['alias']);
             $hostname = empty($search['hostname']) ? null : trim($search['hostname']);
             $user = empty($search['user']) ? null : trim($search['user']);
         }
 
-        if (!empty($alias))
-        {
+        if (!empty($alias)) {
             $return['alias'] = [$alias => $this->getHosts($alias)];
         }
 
-        if (!empty($hostname))
-        {
+        if (!empty($hostname)) {
             $hosts = $this->getHostsByHostname($hostname);
 
-            if (!empty($user))
-            {
+            if (!empty($user)) {
                 $return['hostname'][$user] = [];
             }
 
-            foreach($hosts as $alias => $host)
-            {
+            foreach ($hosts as $alias => $host) {
                 $_user = $host['ssh']['user'];
-                if (empty($user) or $user == $_user)
-                {
-                    if (!isset($return['hostname'][$_user]))
-                    {
+                if (empty($user) or $user == $_user) {
+                    if (!isset($return['hostname'][$_user])) {
                         $return['hostname'][$_user] = [];
                     }
 
-                    $return['hostname'][$_user][$alias]= $host;
+                    $return['hostname'][$_user][$alias] = $host;
                 }
             }
         }
 
         return $return;
-
     }
 
     /**
      * Get hosts by alias, or all
      * @param $alias - leave out to return all
      */
-    public function getHosts($alias=null)
+    public function getHosts($alias = null)
     {
-        if (is_null($alias))
-        {
+        if (is_null($alias)) {
             return empty($this->data['hosts']) ? [] : $this->data['hosts'];
         }
 
@@ -257,8 +234,7 @@ class PSSH_Config
      */
     public function deleteHost($alias)
     {
-        if (!empty($alias) and isset($this->data['hosts'][$alias]))
-        {
+        if (!empty($alias) and isset($this->data['hosts'][$alias])) {
             unset($this->data['hosts'][$alias]);
             return true;
         }
@@ -280,26 +256,24 @@ class PSSH_Config
      * Get hosts by hostname, or full map
      * @param $hostname - leave out to return all
      */
-    public function getHostsByHostname($hostname=null)
+    public function getHostsByHostname($hostname = null)
     {
-        if (is_null($this->hosts_by_hostname))
-        {
+        if (is_null($this->hosts_by_hostname)) {
             $this->hosts_by_hostname = [];
-            foreach ($this->getHosts() as $alias => $host)
-            {
-                if (empty($host['ssh']['hostname'])) continue;
+            foreach ($this->getHosts() as $alias => $host) {
+                if (empty($host['ssh']['hostname'])) {
+                    continue;
+                }
 
                 $_hostname = $host['ssh']['hostname'];
-                if (!isset($this->hosts_by_hostname[$_hostname]))
-                {
+                if (!isset($this->hosts_by_hostname[$_hostname])) {
                     $this->hosts_by_hostname[$_hostname] = [];
                 }
-                $this->hosts_by_hostname[$_hostname][$alias]=$host;
+                $this->hosts_by_hostname[$_hostname][$alias] = $host;
             }
         }
 
-        if (is_null($hostname))
-        {
+        if (is_null($hostname)) {
             return $this->hosts_by_hostname;
         }
 
@@ -311,17 +285,14 @@ class PSSH_Config
      */
     public function getTeamKeys()
     {
-        if (is_null($this->team_keys))
-        {
+        if (is_null($this->team_keys)) {
             $this->log("Reading in team keys...");
             $this->team_keys = array();
-            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys']))
-            {
+            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys'])) {
                 $raw = file_get_contents($this->data['pssh']['team_keys']);
 
                 $data = json_decode($raw, true);
-                if ($data)
-                {
+                if ($data) {
                     $this->team_keys = $data;
                 }
             }
@@ -334,11 +305,9 @@ class PSSH_Config
      */
     public function getTeamKeysIdentifier()
     {
-        if (is_null($this->team_keys_identifier))
-        {
+        if (is_null($this->team_keys_identifier)) {
             $this->team_keys_identifier = 'team keys';
-            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys_identifier']))
-            {
+            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys_identifier'])) {
                 $this->team_keys_identifier = $this->data['pssh']['team_keys_identifier'];
             }
         }
@@ -346,33 +315,26 @@ class PSSH_Config
     }
 
     /**
-     * Recursively diff host info as though creating an override  
+     * Recursively diff host info as though creating an override
      * @param $host1 - Primary host - return this minus second
      * @param $host2 - Subtract info identical info in host2 from host1
      */
-    public function host_diff($host1, $host2, $p="")
+    public function host_diff($host1, $host2, $p = "")
     {
-        foreach ($host1 as $key => $value1)
-        {
+        foreach ($host1 as $key => $value1) {
             // $this->log($p.$key);
-            if (isset($host2[$key]))
-            {
+            if (isset($host2[$key])) {
                 $value2 = $host2[$key];
 
-                if (is_array($value1) and is_array($value2))
-                {
+                if (is_array($value1) and is_array($value2)) {
                     // $this->log($p.'RECUR');
-                    $host1[$key] = $this->host_diff($value1, $value2, $p."-");
-                    if (empty($host1[$key]))
-                    {
+                    $host1[$key] = $this->host_diff($value1, $value2, $p . "-");
+                    if (empty($host1[$key])) {
                         // $this->log($p.'REMOVE');
                         unset($host1[$key]);
                     }
-                }
-                else
-                {
-                    if ($value1 == $value2)
-                    {
+                } else {
+                    if ($value1 == $value2) {
                         // $this->log($p.'REMOVE');
                         unset($host1[$key]);
                     }
@@ -392,11 +354,9 @@ class PSSH_Config
     {
         $init = $this->initData();
 
-        foreach ($this->getHosts() as $alias => $host)
-        {
+        foreach ($this->getHosts() as $alias => $host) {
             $success = $target->add($alias, $host);
-            if (!$success)
-            {
+            if (!$success) {
                 // force it into override file
                 $override->add($alias, $host, true);
             }
@@ -416,12 +376,10 @@ class PSSH_Config
         $unmerged_data = [];
 
         // $this->log('Loading json files:');
-        foreach ($paths as $path)
-        {
+        foreach ($paths as $path) {
             // $this->log(" - $path");
 
-            if (!file_exists($path))
-            {
+            if (!file_exists($path)) {
                 // $this->log(" --- file doesn't exist, will be created");
                 continue;
             }
@@ -431,20 +389,16 @@ class PSSH_Config
             $this->log("Decoding data from $path...");
             $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
             //$decoded = json_decode($json, true);
-            if (empty($decoded))
-            {
+            if (empty($decoded)) {
                 $this->error("Likely Syntax Error: $path");
             }
 
             $unmerged_data[] = $decoded;
         }
 
-        if (count($unmerged_data) == 1)
-        {
+        if (count($unmerged_data) == 1) {
             $this->data = $unmerged_data[0];
-        }
-        elseif (count($unmerged_data) > 1)
-        {
+        } elseif (count($unmerged_data) > 1) {
             $this->data = call_user_func_array('array_replace_recursive', $unmerged_data);
         }
     }
@@ -455,84 +409,70 @@ class PSSH_Config
      */
     public function readSSH($path)
     {
-		$path_handle = fopen($path, 'r');
+        $path_handle = fopen($path, 'r');
         $init = $this->initData();
 
-		$original_keys = [];
+        $original_keys = [];
 
-		$l = 0;
-		while ($line = fgets($path_handle))
-		{
-			$l++;
-			$line = trim($line);
+        $l = 0;
+        while ($line = fgets($path_handle)) {
+            $l++;
+            $line = trim($line);
 
-			// $this->log("$l: $line");
+            // $this->log("$l: $line");
 
             // Skip Blank Lines
-            if (empty($line))
-            {
-				// $this->log(' - blank - skipping');
-				continue;
+            if (empty($line)) {
+                // $this->log(' - blank - skipping');
+                continue;
             }
 
-			// Skip Comments
-			if (strpos($line,'#') === 0)
-			{
-				// $this->log(' - comment - skipping');
-				continue;
-			}
+            // Skip Comments
+            if (strpos($line, '#') === 0) {
+                // $this->log(' - comment - skipping');
+                continue;
+            }
 
-			// Parse into key and value
-			if (preg_match('/^(\S+)\s+(.*)$/', $line, $match))
-			{
-				$key = strtolower($match[1]);
-				$value = trim($match[2]);
+            // Parse into key and value
+            if (preg_match('/^(\S+)\s+(.*)$/', $line, $match)) {
+                $key = strtolower($match[1]);
+                $value = trim($match[2]);
 
-                if (!isset(self::$CONFIG_KEYS[$key]))
-                {
-                    $original_keys[$key]= $match[1];
+                if (!isset(self::$CONFIG_KEYS[$key])) {
+                    $original_keys[$key] = $match[1];
                 }
 
 
-				// $this->log(" - Parsed as [$key => $value]");
-				if ($key == 'host')
-				{
-					$host = $value;
-					$this->data['hosts'][$host] = [
-						'ssh' => [],
-						'pssh' => [],
-					];
-				}
-				else
-				{
-					if (empty($host))
-					{
-						// $this->log(" - Determined to be general config");
-						$this->data['ssh'][$key] = $value;
-					}
-					else
-					{
-						// $this->log(" - Adding to hosts[$host][ssh]");
-						$this->data['hosts'][$host]['ssh'][$key] = $value;
-					}
-				}
-			}
-			else
-			{
-				$this->error("Unexpected syntax - check $path line $l");
-			}
-		}
+                // $this->log(" - Parsed as [$key => $value]");
+                if ($key == 'host') {
+                    $host = $value;
+                    $this->data['hosts'][$host] = [
+                        'ssh' => [],
+                        'pssh' => [],
+                    ];
+                } else {
+                    if (empty($host)) {
+                        // $this->log(" - Determined to be general config");
+                        $this->data['ssh'][$key] = $value;
+                    } else {
+                        // $this->log(" - Adding to hosts[$host][ssh]");
+                        $this->data['hosts'][$host]['ssh'][$key] = $value;
+                    }
+                }
+            } else {
+                $this->error("Unexpected syntax - check $path line $l");
+            }
+        }
 
         // Warn about any unknown keys our mapping didn't have
-        if (!empty($original_keys))
-        {
+        if (!empty($original_keys)) {
             $original_keys = array_unique($original_keys);
             sort($original_keys);
             $this->warn('Unknwon Config Key(s) Present - if these are valid, the PSSH code should be updated to know about them.');
             $this->output($original_keys);
         }
 
-		fclose($path_handle);
+        fclose($path_handle);
     }
 
     /**
@@ -548,27 +488,24 @@ class PSSH_Config
         $termstring = strtolower(trim($termstring));
 
         // No search - return all hosts
-        if(empty($termstring))
-        {
+        if (empty($termstring)) {
             return $this->data['hosts'];
         }
 
         $terms = explode(" ", $termstring);
         $terms = array_map('trim', $terms);
         $ips = [];
-        foreach($terms as $term)
-        {
+        foreach ($terms as $term) {
             $ip = $this->cleanHostname($term, [], false);
 
-            if ($ip != $term)
-            {
-                $ips[]= $ip;
+            if ($ip != $term) {
+                $ips[] = $ip;
             }
         }
 
         $terms = array_merge($terms, $ips);
 
-        $terms_pattern = "(".implode("|", $terms).")";
+        $terms_pattern = "(" . implode("|", $terms) . ")";
 
         // Patterns for search, keyed by levity
         $patterns = [
@@ -578,11 +515,10 @@ class PSSH_Config
             1 => "$terms_pattern",
         ];
 
-        $h=0;
+        $h = 0;
         $results = [];
 
-        foreach ($this->data['hosts'] as $alias => $host)
-        {
+        foreach ($this->data['hosts'] as $alias => $host) {
             // Higher levity will float higher in results
             // 0 = no match - falls out of the list
             $levity = 0;
@@ -596,26 +532,21 @@ class PSSH_Config
                 1 => $alias,
             ];
 
-            if (empty($host['pssh']['alias']))
-            {
+            if (empty($host['pssh']['alias'])) {
                 $host['pssh']['alias'] = $alias;
             }
 
 
-            foreach($targets as $t => $target)
-            {
-                foreach ($patterns as $p => $pattern)
-                {
-                    if (!empty($target) and preg_match_all("`" . $pattern . "`", $target, $matches))
-                    {
-                        $levity+= ( ($p+1) * 10)  + ($t+1);
+            foreach ($targets as $t => $target) {
+                foreach ($patterns as $p => $pattern) {
+                    if (!empty($target) and preg_match_all("`" . $pattern . "`", $target, $matches)) {
+                        $levity += ( ($p + 1) * 10)  + ($t + 1);
                         continue; //quit as soon as we have a match
                     }
                 }
             }
 
-            if ($levity > 0)
-            {
+            if ($levity > 0) {
                 $this->log("$alias: $levity");
 
                 // Multiply to make sure host index doesn't matter much beyond ensuring uniqueness
@@ -624,7 +555,7 @@ class PSSH_Config
 
                 $results[$levity] = [$alias, $host];
             }
-            
+
             $h++;
         }
 
@@ -632,8 +563,7 @@ class PSSH_Config
 
         // Re-key by alias
         $return = [];
-        foreach ($results as $result)
-        {
+        foreach ($results as $result) {
             $alias = $result[0];
             $host = $result[1];
             $return[$alias] = $host;
@@ -658,7 +588,7 @@ class PSSH_Config
          */
             $json = json_encode($this->data, JSON_PRETTY_PRINT);
         //}
-		file_put_contents($path, $json);
+        file_put_contents($path, $json);
     }
 
     /**
@@ -667,7 +597,7 @@ class PSSH_Config
      */
     public function writeSSH($path)
     {
-		$path_handle = fopen($path, 'w');
+        $path_handle = fopen($path, 'w');
 
         // $this->log("Outputting Comment");
         fwrite($path_handle, "# ---------------------------------------\n");
@@ -680,14 +610,12 @@ class PSSH_Config
         fwrite($path_handle, "# ---------------------------------------\n");
         fwrite($path_handle, "# General Config\n");
         fwrite($path_handle, "# ---------------------------------------\n");
-        if (!empty($this->data['ssh']))
-        {
-			foreach ($this->data['ssh'] as $key => $value)
-			{
-				// $this->log(" - $key: $value");
-				$Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
-				fwrite($path_handle, $Key . ' ' . $value . "\n");
-			}
+        if (!empty($this->data['ssh'])) {
+            foreach ($this->data['ssh'] as $key => $value) {
+                // $this->log(" - $key: $value");
+                $Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
+                fwrite($path_handle, $Key . ' ' . $value . "\n");
+            }
         }
 
         // $this->log("Outputting Hosts Config");
@@ -695,10 +623,8 @@ class PSSH_Config
         fwrite($path_handle, "# ---------------------------------------\n");
         fwrite($path_handle, "# HOSTS\n");
         fwrite($path_handle, "# ---------------------------------------\n");
-        foreach ($this->getHosts() as $alias => $host_config)
-        {
-            if (empty($host_config['pssh']['alias']))
-            {
+        foreach ($this->getHosts() as $alias => $host_config) {
+            if (empty($host_config['pssh']['alias'])) {
                 $host_config['pssh']['alias'] = $alias;
             }
 
@@ -709,7 +635,7 @@ class PSSH_Config
         // $this->log("Outputting Vim Syntax Comment");
         fwrite($path_handle, "\n# vim: syntax=sshconfig");
 
-		fclose($path_handle);
+        fclose($path_handle);
     }
 
     /**
@@ -719,11 +645,10 @@ class PSSH_Config
     public function writeSSHHost($host)
     {
         $output = "";
-        $output.='Host ' . $host['pssh']['alias'] . "\n";
-        foreach ($host['ssh'] as $key => $value)
-        {
+        $output .= 'Host ' . $host['pssh']['alias'] . "\n";
+        foreach ($host['ssh'] as $key => $value) {
             $Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
-            $output.= '    ' . $Key . ' ' . $value . "\n";
+            $output .= '    ' . $Key . ' ' . $value . "\n";
         }
         return $output;
     }
@@ -739,8 +664,7 @@ class PSSH_Config
      */
     public function initData()
     {
-        if (is_null($this->data))
-        {
+        if (is_null($this->data)) {
             $this->data = [
                 "ssh" => [],
                 "pssh" => [],
@@ -757,12 +681,11 @@ class PSSH_Config
      */
     public function autoAlias($alias)
     {
-        $i=0;
+        $i = 0;
         $new_alias = $alias;
-        while (isset($this->data['hosts'][$new_alias]))
-        {
+        while (isset($this->data['hosts'][$new_alias])) {
             $i++;
-            $new_alias = $alias.$i;
+            $new_alias = $alias . $i;
         }
 
         return $new_alias;
@@ -776,7 +699,7 @@ class PSSH_Config
      *  If certain, we'll warn if we can't look it up
      *  If uncertain, we'll validate it as a URL before looking up
      */
-    public function cleanHostname($hostname, $pssh=[], $certain=true)
+    public function cleanHostname($hostname, $pssh = [], $certain = true)
     {
         // $this->log("cleanHostname($hostname, ..., $certain)");
 
@@ -788,7 +711,7 @@ class PSSH_Config
         );
 
         $valid_ip = filter_var($hostname, FILTER_VALIDATE_IP);
-        $valid_url = filter_var('http://'.$hostname, FILTER_VALIDATE_URL);
+        $valid_url = filter_var('http://' . $hostname, FILTER_VALIDATE_URL);
 
         // Canonicalize to IP Address
         if (
@@ -806,9 +729,8 @@ class PSSH_Config
                 empty($info)
                 or empty($info[0]['ip'])
                 or !filter_var($info[0]['ip'], FILTER_VALIDATE_IP)
-            ){
-                if ($certain)
-                {
+            ) {
+                if ($certain) {
                     $this->warn("Failed lookup - $hostname.  Set pssh:lookup to 'no' if this is normal for this host.");
                 }
                 return $hostname;
@@ -816,13 +738,10 @@ class PSSH_Config
 
             $ip = $info[0]['ip'];
 
-            if (filter_var($ip, FILTER_VALIDATE_IP))
-            {
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
                 $hostname = $ip;
             }
-        }
-        else
-        {
+        } else {
             // $this->log("Hostname Approved ($hostname)");
         }
 
@@ -835,12 +754,11 @@ class PSSH_Config
     public function __call($method, $arguments)
     {
         $shell_call = [$this->shell, $method];
-        if (is_callable($shell_call))
-        {
+        if (is_callable($shell_call)) {
             $this->shell->log(" __call: Attempting to call $method on separate class...");
             return call_user_func_array($shell_call, $arguments);
         }
     }
 }
-PSSH_Config::$CONFIG_KEYS=$CONFIG_KEYS;
+PSSH_Config::$CONFIG_KEYS = $CONFIG_KEYS;
 ?>

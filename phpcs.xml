@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="PCon Standards" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/squizlabs/PHP_CodeSniffer/master/phpcs.xsd">
+
+	<description>PCon Standards - based on PSR-12</description>
+
+    <file>.</file>
+
+	<!-- Exclude Javascript & CSS files. -->
+	<exclude-pattern>*.js</exclude-pattern>
+	<exclude-pattern>*.css</exclude-pattern>
+
+	<exclude-path>pcon</exclude-path>
+
+	<!-- Include the amin standard. -->
+	<rule ref="PSR12">
+		<!-- Ignore closing tags - we want those for packaging-->
+		<exclude name="PSR2.Files.ClosingTag"></exclude>
+	</rule>
+
+	<!-- Check for PHP compatibility. -->
+	<config name="testVersion" value="7.4-"/>
+	<rule ref="PHPCompatibility"/>
+
+</ruleset>

@@ -468,7 +468,10 @@ class PSSH_Config
         if (!empty($original_keys)) {
             $original_keys = array_unique($original_keys);
             sort($original_keys);
-            $this->warn('Unknwon Config Key(s) Present - if these are valid, the PSSH code should be updated to know about them.');
+            $this->warn(
+                'Unknwon Config Key(s) Present' .
+                ' - if these are valid, the PSSH code should be updated to know about them.'
+            );
             $this->output($original_keys);
         }
 

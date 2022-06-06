@@ -5,10 +5,10 @@
  */
 class PSSH extends Console_Abstract
 {
-    const VERSION = "2.4.1";
+    public const VERSION = "2.4.1";
 
     // Name of script and directory to store config
-    const SHORTNAME = 'pssh';
+    public const SHORTNAME = 'pssh';
 
     /**
      * Callable Methods
@@ -95,7 +95,10 @@ class PSSH extends Console_Abstract
             $existing = $config->find(['hostname' => $hostname]);
             $existing_users = array_keys($existing['hostname']);
             if (!empty($existing_users)) {
-                $this->output("NOTE: existing users configured for this hostname: (" . join(", ", $existing_users) . ")");
+                $this->output(
+                    'NOTE: existing users configured for this hostname: (' .
+                    join(', ', $existing_users) . ')'
+                );
             }
             $user = $this->input('User', null, true);
         } else {
@@ -262,7 +265,10 @@ class PSSH extends Console_Abstract
     protected $___edit_host = [
         "Edit host - modify config in your editor",
         ["Alias of host", "string", "required"],
-        ["Specific JSON file(s) to edit - defaults to first found in json-config-paths that contains the host alias", "string"],
+        [
+            'Specific JSON file(s) to edit - defaults to first found in json-config-paths that contains the host alias',
+            'string'
+        ],
     ];
     public function edit_host($alias, $paths = null)
     {
@@ -385,7 +391,11 @@ ____KEYS____;
 # END - {$identifier}
 # ----------------------------------
 ____KEYS____;
-                $this->exec("ssh $alias 'mkdir -p ~/.ssh && echo \"" . $config . "\" >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'");
+
+                $this->exec(
+                    "ssh $alias 'mkdir -p ~/.ssh && echo \"" . $config . "\"" .
+                    " >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'"
+                );
             } else {
                 $this->exec("ssh-copy-id $alias");
             }
@@ -481,7 +491,9 @@ ____KEYS____;
                             'callback' => function ($list_instance) {
                                 $focused_key = $list_instance->getFocusedKey();
                                 $host_alias = $focused_key;
-                                if ($this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n")) {
+                                if (
+                                    $this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n")
+                                ) {
                                     $this->delete_host($host_alias);
                                 }
                             },

@@ -9,12 +9,19 @@
 	<exclude-pattern>*.js</exclude-pattern>
 	<exclude-pattern>*.css</exclude-pattern>
 
-	<exclude-path>pcon</exclude-path>
+	<exclude-pattern>/pcon/*</exclude-pattern>
 
 	<!-- Include the amin standard. -->
 	<rule ref="PSR12">
-		<!-- Ignore closing tags - we want those for packaging-->
+		<!-- Ignore some rules based on our organization & packaging strategies-->
+		<exclude name="PSR1.Classes.ClassDeclaration"></exclude>
+		<exclude name="PSR1.Files.SideEffects"></exclude>
 		<exclude name="PSR2.Files.ClosingTag"></exclude>
+
+        <!-- Replaced by our own standards -->
+		<exclude name="Squiz.Classes.ValidClassName"></exclude>
+		<exclude name="PSR1.Methods.CamelCapsMethodName"></exclude>
+		<exclude name="PSR2.Classes.PropertyDeclaration"></exclude>
 	</rule>
 
 	<!-- Check for PHP compatibility. -->

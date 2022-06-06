@@ -1,0 +1,8 @@
+" Uses:
+" if filereadable("./.vimproject/vimrc") 
+"     source ./.vimproject/vimrc 
+" endif
+"
+
+" PSR-12
+set expandtab

@@ -466,7 +466,7 @@ ____KEYS____;
                 $this,
                 $results,
                 [
-                    'template' => "{pssh:alias|%-'.30s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+                    'template' => "{pssh:alias|%-'.50s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
                     'reload_function' => function ($reload_data) {
                         $config = new PSSH_Config($this);
                         $config->readJSON($reload_data['paths']);

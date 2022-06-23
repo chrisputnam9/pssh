@@ -42,11 +42,13 @@ class PSSH_Config
     public function add(&$alias, &$host, $force = false)
     {
         $hostname = empty($host['ssh']['hostname']) ? null : $host['ssh']['hostname'];
+        $port = empty($host['ssh']['port']) ? null : $host['ssh']['port'];
         $user = empty($host['ssh']['user']) ? null : $host['ssh']['user'];
 
         $search = [
             'alias' => $alias,
             'hostname' => $hostname,
+            'port' => $port,
             'user' => $user,
         ];
 
@@ -59,10 +61,11 @@ class PSSH_Config
         $existing_config_alias = [];
         $existing_config = [];
         if (!is_null($hostname) and !is_null($user)) {
-            // should be only one, so let's just look at the first one
-            $existing_config_aliases = array_keys($existing['hostname'][$user]);
-            $existing_config_alias = array_shift($existing_config_aliases);
-            $existing_config = array_shift($existing['hostname'][$user]);
+            foreach ($existing['hostname'][$user] as $_alias => $_host) {
+                $existing_config_aliases = array_keys($existing['hostname'][$user]);
+                $existing_config_alias = array_shift($existing_config_aliases);
+                $existing_config = array_shift($existing['hostname'][$user]);
+            }
         }
 
         $override_host = [];
@@ -170,6 +173,7 @@ class PSSH_Config
         // The info to search by
         $alias = null;
         $hostname = null;
+        $port = null;
         $user = null;
 
         $return = [
@@ -186,6 +190,7 @@ class PSSH_Config
         if (is_array($search)) {
             $alias = empty($search['alias']) ? null : trim($search['alias']);
             $hostname = empty($search['hostname']) ? null : trim($search['hostname']);
+            $port = empty($search['port']) ? null : trim($search['port']);
             $user = empty($search['user']) ? null : trim($search['user']);
         }
 
@@ -202,7 +207,11 @@ class PSSH_Config
 
             foreach ($hosts as $alias => $host) {
                 $_user = $host['ssh']['user'];
-                if (empty($user) or $user == $_user) {
+                $_port = $host['ssh']['port'] ?? 22;
+                if (
+                    ( empty($port) or $port == $_port )
+                    and ( empty($user) or $user == $_user )
+                ) {
                     if (!isset($return['hostname'][$_user])) {
                         $return['hostname'][$_user] = [];
                     }

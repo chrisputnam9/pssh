@@ -581,7 +581,7 @@ GITGNORE;
     /**
      * Init config defaults, then call parent
      */
-    public function initConfig()
+    public function initConfig(): bool
     {
         $config_dir = $this->getConfigDir();
 
@@ -599,7 +599,7 @@ GITGNORE;
             $this->cli_script = $cli_script;
         }
 
-        parent::initConfig();
+        return parent::initConfig();
     }
 }
 PSSH::run($argv);

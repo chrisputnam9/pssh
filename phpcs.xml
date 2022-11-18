@@ -6,33 +6,45 @@
     <file>.</file>
 
 	<!-- Exclude Javascript & CSS files. -->
-	<exclude-pattern>*.js</exclude-pattern>
-	<exclude-pattern>*.css</exclude-pattern>
-
-	<!-- Exclude third-party files -->
-	<exclude-pattern>src/lib/vnd_*</exclude-pattern>
-
-    <!-- Exclude template file -->
-    <!-- TODO adjust this later on to allow it to be checked -->
-	<exclude-pattern>src/pkg/sample.php</exclude-pattern>
-
-    <!-- Let pcon manage itself in child tools -->
-	<exclude-pattern>/pcon/*</exclude-pattern>
+	<exclude-pattern>*\.js$</exclude-pattern>
+	<exclude-pattern>*\.css$</exclude-pattern>
 
 	<!-- Include the main standard. -->
 	<rule ref="PSR12">
 		<!-- Ignore some rules based on our organization & packaging strategies-->
-		<exclude name="PSR1.Classes.ClassDeclaration"></exclude>
-		<exclude name="PSR1.Files.SideEffects"></exclude>
-		<exclude name="PSR2.Files.ClosingTag"></exclude>
+        <exclude name="PSR1.Classes.ClassDeclaration"/>
+        <exclude name="PSR1.Files.SideEffects"/>
+        <exclude name="PSR2.Files.ClosingTag"/>
 
-        <!-- To be replaced by our own standards -->
-		<exclude name="Generic.Files.LineLength"></exclude>
-		<exclude name="PSR1.Methods.CamelCapsMethodName"></exclude>
-		<exclude name="PSR2.Classes.PropertyDeclaration"></exclude>
-		<exclude name="PSR2.Methods.MethodDeclaration"></exclude>
-		<exclude name="Squiz.Classes.ValidClassName"></exclude>
+        <!-- Conflicts with our preferred commenting rules (Squiz) -->
+        <exclude name="PSR12.Files.FileHeader"/>
+        <exclude name="PSR12.Classes.ClosingBrace"/>
+
+        <!-- To be replaced by our own standards at some point -->
+        <exclude name="Generic.Files.LineLength"/>
+        <exclude name="PSR1.Methods.CamelCapsMethodName"/>
+        <exclude name="PSR2.Classes.PropertyDeclaration"/>
+        <exclude name="PSR2.Methods.MethodDeclaration"/>
+        <exclude name="Squiz.Classes.ValidClassName"/>
+
 	</rule>
+
+    <!-- Enforce Doc Block Comments, etc. -->
+    <rule ref="Squiz.Commenting">
+        <!-- We'll use our own values and won't use subpackage -->
+		<exclude name="Squiz.Commenting.FileComment.IncorrectAuthor"/>
+		<exclude name="Squiz.Commenting.FileComment.IncorrectCopyright"/>
+		<exclude name="Squiz.Commenting.FileComment.MissingSubpackageTag"/>
+		<exclude name="Squiz.Commenting.FileComment.SubpackageTagOrder"/>
+
+        <!-- A little less picky in a few areas -->
+        <exclude name="Squiz.Commenting.InlineComment.InvalidEndChar"/>
+        <exclude name="Squiz.Commenting.InlineComment.NotCapital"/>
+        <exclude name="Squiz.Commenting.BlockComment.NoEmptyLineAfter"/>
+        <exclude name="Squiz.Commenting.VariableComment.TagNotAllowed"/>
+	</rule>
+
+    <rule ref="Generic.Commenting"/>
 
 	<!-- Check for PHP compatibility. -->
 	<config name="testVersion" value="7.4-"/>

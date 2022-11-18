@@ -772,5 +772,7 @@ class PSSH_Config
         }
     }
 }
-PSSH_Config::$CONFIG_KEYS = $CONFIG_KEYS;
+PSSH_Config::$CONFIG_KEYS = $PSSH_CONFIG_KEYS;
+
+// Note: leave the end tag for packaging
 ?>

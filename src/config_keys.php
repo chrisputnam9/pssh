@@ -1,6 +1,19 @@
 <?php
+/**
+ * Defines $PSSH_CONFIG_KEYS
+ *
+ * @package pssh
+ * @author  chrisputnam9
+ */
 
-$CONFIG_KEYS = [
+/*
+ * @var array Reference of available SSH configuration keys.
+ *            Map from lowercase to correct case to allow case-insensitive
+ *            configuration in PSSH
+ * @global
+ * @used-by PSSH_Config
+ */
+$PSSH_CONFIG_KEYS = [
     "addkeystoagent" => "AddKeysToAgent",
     "addressfamily" => "AddressFamily",
     "batchmode" => "BatchMode",
@@ -92,4 +105,6 @@ $CONFIG_KEYS = [
     "visualhostkey" => "VisualHostKey",
     "xauthlocation" => "XAuthLocation",
 ];
+
+// Note: leave the end tag for packaging
 ?>

@@ -6,3 +6,6 @@
 
 " PSR-12
 set expandtab
+
+" No JS in this project
+let g:syntastic_php_checkers = ['php', 'phpcs']

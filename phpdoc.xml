@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<phpdocumentor
+        configVersion="3"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="https://www.phpdoc.org"
+        xsi:noNamespaceSchemaLocation="https://github.com/phpDocumentor/phpDocumentor/blob/master/data/xsd/phpdoc.xsd"
+>
+    <title>PSSH - PHP Shared SSH Configuration Tool</title>
+    <paths>
+        <output>docs</output>
+        <cache>docs/.cache</cache>
+    </paths>
+    <version number="1.4.2">
+        <api>
+            <source>
+                <path>.</path>
+            </source>
+            <ignore>
+                <path>docs</path>
+                <path>src/pkg/sample.php</path>
+                <path>tests</path>
+            </ignore>
+            <include-source>true</include-source>
+        </api>
+    </version>
+    <template name="clean" />
+    <!--
+    <template name="clean" />
+    <template name="default" />
+    <template name="responsive-twig" />
+    <template name="xml" />
+    -->
+</phpdocumentor>

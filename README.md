@@ -1,3 +1,12 @@
+# PSSH - PHP SSH Configuration Management Tool
+This tool aids in managing your SSH configuration file (~/.ssh/config)
+
+Primary features include:
+ - Ability to sync and share SSH configuration among multiple users
+ - Abiliity to merge multiple configurations - ie. personal and work
+ - Interface to search, edit, delete, and create new host configurations
+ - Ability to initialize hosts - copy individual/team keys and optionally run a custom script install
+
 # Getting Started
 
 Quick getting started information for the most common use case.

@@ -1,17 +1,37 @@
 <?php
+/**
+ * PSSH Class File
+ *
+ * @package pssh
+ * @author  chrisputnam9
+ */
 
 /**
- * PSSH Console Interface
+ * PSSH - PHP SSH Configuration Management Tool
+ *
+ *  - Defines the PSSH CLI tool
  */
 class PSSH extends Console_Abstract
 {
+    /**
+     * Current tool version
+     *
+     * @var string
+     */
     public const VERSION = "2.4.1";
 
-    // Name of script and directory to store config
+    /**
+     * Tool shortname - used as name of configurationd directory.
+     *
+     * @var string
+     */
     public const SHORTNAME = 'pssh';
 
     /**
-     * Callable Methods
+     * Callable Methods / Sub-commands
+     *  - Must be public methods defined on the class
+     *
+     * @var array
      */
     protected static $METHODS = [
         'add',
@@ -27,6 +47,13 @@ class PSSH extends Console_Abstract
         'sync',
     ];
 
+    /**
+     * Config options that are hidden from help output
+     * - Add config values here that would not typically be overridden by a flag
+     * - Cleans up help output and avoids confusion
+     *
+     * @var array
+     */
     protected static $HIDDEN_CONFIG_OPTIONS = [
         'json_config_paths',
         'json_import_path',
@@ -34,24 +61,74 @@ class PSSH extends Console_Abstract
         'sync',
     ];
 
-    // Config Variables
+    /**
+     * Help info for $TODO
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $__json_config_paths = ["Main JSON config file paths", "string"];
     public $json_config_paths = [];
 
+    /**
+     * Help info for $TODO
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $__json_import_path = ["Default JSON config import path", "string"];
     public $json_import_path = null;
 
+    /**
+     * Help info for $TODO
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $__ssh_config_path = ["Default SSH config path", "string"];
     public $ssh_config_path = null;
 
+    /**
+     * Help info for $TODO
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $__cli_script = ["CLI script to install on hosts during init", "string"];
     public $cli_script = '';
 
+    /**
+     * Help info for $TODO
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $__sync = ["Git SSH URL to sync config data", "string"];
     public $sync = '';
 
+    /**
+     * The URL to check for updates
+     *
+     *  - PSSH will check the README file - typical setup
+     *
+     * @var string
+     * @see PCon::update_version_url
+     * @api
+     */
     public $update_version_url = "https://raw.githubusercontent.com/chrisputnam9/pssh/master/README.md";
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___add = [
         "Add new SSH host - interactive, or specify options",
         ["JSON file to add host to", "string"],
@@ -157,6 +234,13 @@ class PSSH extends Console_Abstract
         $this->output('Done!');
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___clean = [
         "Clean json config files",
         ["JSON file(s) to clean - defaults to json-config-paths", "string"],
@@ -182,6 +266,13 @@ class PSSH extends Console_Abstract
         $this->output('Clean complete');
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___export = [
         "Export JSON config to SSH config file",
         ["Source JSON files - defaults to json-config-paths", "string"],
@@ -202,6 +293,13 @@ class PSSH extends Console_Abstract
         $this->output('Export complete');
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___import = [
         "Import SSH config data into JSON",
         ["Target JSON file - defaults to json-import-path", "string"],
@@ -225,6 +323,13 @@ class PSSH extends Console_Abstract
         $this->output('Import complete - see json in ' . $target);
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___delete_host = [
         "Delete host",
         ["Alias of host to delete", "string", "required"],
@@ -262,6 +367,13 @@ class PSSH extends Console_Abstract
         return true;
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___edit_host = [
         "Edit host - modify config in your editor",
         ["Alias of host", "string", "required"],
@@ -337,6 +449,13 @@ class PSSH extends Console_Abstract
         return true;
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___init_host = [
         "Initialize host - interactive, or specify options",
         ["Alias of host", "string", "required"],
@@ -410,6 +529,13 @@ ____KEYS____;
         }
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___merge = [
         "Merge config from one JSON file into another",
         ["JSON file to merge from", "string", "required"],
@@ -442,6 +568,13 @@ ____KEYS____;
         $this->output("Merge complete");
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___search = [
         "Search for host configuration",
         ["Term(s) to search - separate with spaces", "string", "required"],
@@ -515,6 +648,13 @@ ____KEYS____;
         }
     }
 
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
+     */
     protected $___list = [
         "List all hosts",
         ["JSON config path(s) to list - defaults to json-config-paths", "string"],
@@ -526,6 +666,13 @@ ____KEYS____;
 
     /**
      * Currently only supports private git repository
+     */
+    /**
+     * Help info for TODO method
+     *
+     * @var array
+     *
+     * @internal
      */
     protected $___sync = "Sync config files based on 'sync' config/option value";
     public function sync()

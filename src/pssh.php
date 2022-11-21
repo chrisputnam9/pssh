@@ -62,53 +62,99 @@ class PSSH extends Console_Abstract
     ];
 
     /**
-     * Help info for $TODO
+     * Help info for $json_config_paths
      *
      * @var array
      *
      * @internal
      */
     protected $__json_config_paths = ["Main JSON config file paths", "string"];
+
+    /**
+     * Main JSON config file paths
+     *
+     *  - JSON format SSH host files to be sourced.
+     *
+     * @var array
+     * @api
+     */
     public $json_config_paths = [];
 
     /**
-     * Help info for $TODO
+     * Help info for $json_import_path
+     *
+     *  - Default set in initConfig -  TODO
      *
      * @var array
      *
      * @internal
      */
     protected $__json_import_path = ["Default JSON config import path", "string"];
+
+    /**
+     * Default JSON config import path
+     *
+     *  - The location to which existing SSH config is imported when the 'import' command is run.
+     *
+     * @var string
+     * @api
+     */
     public $json_import_path = null;
 
     /**
-     * Help info for $TODO
+     * Help info for $ssh_config_path
+     *
+     *  - Default set in initConfig -  TODO
      *
      * @var array
      *
      * @internal
      */
     protected $__ssh_config_path = ["Default SSH config path", "string"];
+
+    /**
+     * Default SSH config path
+     *
+     *  - Path to the user's SSH config file (typically ~/.ssh/config)
+     *
+     * @var string
+     * @api
+     */
     public $ssh_config_path = null;
 
     /**
-     * Help info for $TODO
+     * Help info for $cli_script
      *
      * @var array
      *
      * @internal
      */
     protected $__cli_script = ["CLI script to install on hosts during init", "string"];
+
+    /**
+     * CLI script to install on hosts during init
+     *
+     * @var string
+     *
+     * @api
+     */
     public $cli_script = '';
 
     /**
-     * Help info for $TODO
+     * Help info for $sync
      *
      * @var array
      *
      * @internal
      */
     protected $__sync = ["Git SSH URL to sync config data", "string"];
+
+    /**
+     * Git SSH URL to sync config data
+     *
+     * @var string
+     * @api
+     */
     public $sync = '';
 
     /**
@@ -123,7 +169,7 @@ class PSSH extends Console_Abstract
     public $update_version_url = "https://raw.githubusercontent.com/chrisputnam9/pssh/master/README.md";
 
     /**
-     * Help info for TODO method
+     * Help info for add method
      *
      * @var array
      *
@@ -137,7 +183,27 @@ class PSSH extends Console_Abstract
         ["Alias", "string"],
         ["Port", "integer"],
     ];
-    public function add($target = null, $hostname = null, $user = null, $alias = null, $port = null)
+
+    /**
+     * Add new SSH host - interactive, or specify options
+     *
+     * @param string $target   The target JSON config file in which to add the new host.
+     *                         Will prompt if not passed.
+     * @param string $hostname The IP or URL of the host.
+     *                         Will prompt if not passed.
+     * @param string $user     The SSH username.
+     *                         Will prompt if not passed.
+     * @param string $alias    The alias to use for the host.
+     *                         Will prompt if not passed.
+     *                         Defaults to same value as $user
+     *                          - with a number added to make it unique if necessary.
+     * @param string $port     The SSH port.
+     *                         Will prompt if not passed.
+     *                         Defaults to 22.
+     *
+     * @return void
+     */
+    public function add(string $target = null, string $hostname = null, string $user = null, string $alias = null, string $port = null)
     {
 
         // Sync before - to get latest data
@@ -216,7 +282,6 @@ class PSSH extends Console_Abstract
             $this->error("Unable to add host - likely conflict in $target");
         }
 
-
         // Backup, clean, save json
         $this->backup($target);
         $config->clean();
@@ -232,10 +297,10 @@ class PSSH extends Console_Abstract
 
         $this->hr();
         $this->output('Done!');
-    }
+    }//end add()
 
     /**
-     * Help info for TODO method
+     * Help info for clean method
      *
      * @var array
      *
@@ -245,7 +310,18 @@ class PSSH extends Console_Abstract
         "Clean json config files",
         ["JSON file(s) to clean - defaults to json-config-paths", "string"],
     ];
-    public function clean($paths = null)
+
+    /**
+     * Clean json config files
+     *
+     *  - Eg. remove duplicates, look up IPs, sort data
+     *
+     * @param array $paths The configuration paths to clean up.
+     *                     Defaults to all known config paths.
+     *
+     * @return void
+     */
+    public function clean(array $paths = null)
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
@@ -264,10 +340,10 @@ class PSSH extends Console_Abstract
         }
 
         $this->output('Clean complete');
-    }
+    }//end clean()
 
     /**
-     * Help info for TODO method
+     * Help info for export method
      *
      * @var array
      *
@@ -278,7 +354,18 @@ class PSSH extends Console_Abstract
         ["Source JSON files - defaults to json-config-paths", "string"],
         ["Target SSH config file - defaults to ssh-config-path", "string"],
     ];
-    public function export($sources = [], $target = null)
+
+    /**
+     * Export JSON config to SSH config file
+     *
+     * @param array  $sources Source JSON config paths to pull from.
+     *                        Defaults to use all known config paths.
+     * @param string $target  Target SSH config file to export to.
+     *                        Defaults to configured $ssh_config_path.
+     *
+     * @return void
+     */
+    public function export(array $sources = [], string $target = null)
     {
         $target = $this->prepArg($target, $this->ssh_config_path);
         $sources = $this->prepArg($sources, $this->json_config_paths);
@@ -291,10 +378,10 @@ class PSSH extends Console_Abstract
         $config->writeSSH($target);
 
         $this->output('Export complete');
-    }
+    }//end export()
 
     /**
-     * Help info for TODO method
+     * Help info for import method
      *
      * @var array
      *
@@ -305,7 +392,18 @@ class PSSH extends Console_Abstract
         ["Target JSON file - defaults to json-import-path", "string"],
         ["Source SSH config file - defaults to ssh-config-path"],
     ];
-    public function import($target = null, $source = null)
+
+    /**
+     * Import SSH config data into JSON
+     *
+     * @param string $target JSON file to which to save imported config data.
+     *                       Defaults to configured $json_import_path.
+     * @param string $source SSH config file from which to import data.
+     *                       Defaults to configured $ssh_config_path.
+     *
+     * @return void
+     */
+    public function import(string $target = null, string $source = null)
     {
         // Defaults
         $target = $this->prepArg($target, $this->json_import_path);
@@ -321,7 +419,7 @@ class PSSH extends Console_Abstract
         $config->writeJSON($target);
 
         $this->output('Import complete - see json in ' . $target);
-    }
+    }//end import()
 
     /**
      * Help info for TODO method
@@ -365,7 +463,7 @@ class PSSH extends Console_Abstract
         $this->hr();
         $this->output('Done!');
         return true;
-    }
+    }//end delete_host()
 
     /**
      * Help info for TODO method
@@ -447,7 +545,7 @@ class PSSH extends Console_Abstract
         $this->hr();
         $this->output('Done!');
         return true;
-    }
+    }//end edit_host()
 
     /**
      * Help info for TODO method
@@ -517,8 +615,8 @@ ____KEYS____;
                 );
             } else {
                 $this->exec("ssh-copy-id $alias");
-            }
-        }
+            }//end if
+        }//end if
 
         // Set up Custom CLI Tools?
         if (is_null($cli) and !empty($this->cli_script) and is_file($this->cli_script)) {
@@ -527,7 +625,7 @@ ____KEYS____;
         if ($cli) {
             $this->exec("bash {$this->cli_script} $alias");
         }
-    }
+    }//end init_host()
 
     /**
      * Help info for TODO method
@@ -566,7 +664,7 @@ ____KEYS____;
         $override->writeJSON($override_path);
 
         $this->output("Merge complete");
-    }
+    }//end merge()
 
     /**
      * Help info for TODO method
@@ -645,8 +743,8 @@ ____KEYS____;
                 ]
             );
             $list->run();
-        }
-    }
+        }//end if
+    }//end search()
 
     /**
      * Help info for TODO method
@@ -662,7 +760,7 @@ ____KEYS____;
     public function list($paths = null)
     {
         $this->search($paths);
-    }
+    }//end list()
 
     /**
      * Currently only supports private git repository
@@ -722,8 +820,8 @@ GITGNORE;
 
             // Switch back to original directory
             chdir($original_dir);
-        }
-    }
+        }//end if
+    }//end sync()
 
     /**
      * Init config defaults, then call parent
@@ -747,7 +845,8 @@ GITGNORE;
         }
 
         return parent::initConfig();
-    }
-}
+    }//end initConfig()
+}//end class
+
 PSSH::run($argv);
 ?>

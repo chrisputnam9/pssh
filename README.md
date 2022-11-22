@@ -14,7 +14,7 @@ Quick getting started information for the most common use case.
 ## Latest Version
 See notes to follow below in case you are upgrading from a much earlier version.
 
-### Download Latest Version (2.4.1):
+### Download Latest Version (2.5.0):
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
 ### Latest Version Hash (md5):

@@ -18,7 +18,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.4.1";
+    public const VERSION = "2.5.0";
 
     /**
      * Tool shortname - used as name of configurationd directory.
@@ -74,6 +74,11 @@ class PSSH extends Console_Abstract
      * Main JSON config file paths
      *
      *  - JSON format SSH host files to be sourced.
+     *  - Default set in initConfig:
+     *      [
+     *          ~/.ssh/ssh_config_work.json
+     *          ~/.ssh/ssh_config_personal.json
+     *      ]
      *
      * @var array
      * @api
@@ -82,8 +87,6 @@ class PSSH extends Console_Abstract
 
     /**
      * Help info for $json_import_path
-     *
-     *  - Default set in initConfig -  TODO
      *
      * @var array
      *
@@ -95,6 +98,7 @@ class PSSH extends Console_Abstract
      * Default JSON config import path
      *
      *  - The location to which existing SSH config is imported when the 'import' command is run.
+     *  - Default set in initConfig - ~/.pssh/ssh_config_imported.json
      *
      * @var string
      * @api
@@ -103,8 +107,6 @@ class PSSH extends Console_Abstract
 
     /**
      * Help info for $ssh_config_path
-     *
-     *  - Default set in initConfig -  TODO
      *
      * @var array
      *
@@ -116,6 +118,7 @@ class PSSH extends Console_Abstract
      * Default SSH config path
      *
      *  - Path to the user's SSH config file (typically ~/.ssh/config)
+     *  - Default set in initConfig - ~/.ssh/config
      *
      * @var string
      * @api
@@ -396,9 +399,9 @@ class PSSH extends Console_Abstract
     /**
      * Import SSH config data into JSON
      *
-     * @param string $target JSON file to which to save imported config data.
+     * @param string $target Target JSON file to which to save imported config data.
      *                       Defaults to configured $json_import_path.
-     * @param string $source SSH config file from which to import data.
+     * @param string $source Source SSH config file from which to import data.
      *                       Defaults to configured $ssh_config_path.
      *
      * @return void
@@ -422,18 +425,28 @@ class PSSH extends Console_Abstract
     }//end import()
 
     /**
-     * Help info for TODO method
+     * Help info for delete_host method
      *
      * @var array
      *
      * @internal
      */
     protected $___delete_host = [
-        "Delete host",
+        "Delete a host",
         ["Alias of host to delete", "string", "required"],
         ["Specific JSON file(s) to delete from - defaults to delete from ALL files in json-config-paths", "string"],
     ];
-    public function delete_host($alias, $paths = null)
+
+    /**
+     * Delete a host
+     *
+     * @param string $alias Alias of host to delete.
+     * @param array  $paths The JSON config path(s) from which to delete the host.
+     *               Defaults to all known config paths.
+     *
+     * @return boolean Whether the host was deleted successfully from all paths.
+     */
+    public function delete_host(string $alias, array $paths = null): bool
     {
 
         $paths = $this->prepArg($paths, $this->json_config_paths);
@@ -442,6 +455,7 @@ class PSSH extends Console_Abstract
         $this->sync();
 
         $host_json = false;
+        $any_success = false;
 
         foreach ($paths as $config_path) {
             $config = new PSSH_Config($this);
@@ -452,21 +466,27 @@ class PSSH extends Console_Abstract
                 $this->backup($config_path);
                 $config->clean();
                 $config->writeJson($config_path);
+                $any_success = true;
             }
         }
 
-        // write out ssh config
-        $this->export();
+        if ($any_success) {
+            // write out ssh config
+            $this->export();
 
-        $this->sync();
+            $this->sync();
 
-        $this->hr();
-        $this->output('Done!');
-        return true;
+            $this->hr();
+            $this->output('Done!');
+            return true;
+        }
+
+        $this->warn("No hosts found to delete with alias '$alias'");
+        return false;
     }//end delete_host()
 
     /**
-     * Help info for TODO method
+     * Help info for edit_host method
      *
      * @var array
      *
@@ -480,7 +500,17 @@ class PSSH extends Console_Abstract
             'string'
         ],
     ];
-    public function edit_host($alias, $paths = null)
+
+    /**
+     * Edit host - modify config in your editor
+     *
+     * @param string $alias Alias of host.
+     * @param array  $paths The JSON config path(s) from which to edit the host.
+     *               Defaults to all known config paths.
+     *
+     * @return boolean Whether the host was successfully edited.
+     */
+    public function edit_host(string $alias, array $paths = null): bool
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 

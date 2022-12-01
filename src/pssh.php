@@ -198,11 +198,11 @@ class PSSH extends Console_Abstract
      *                         Will prompt if not passed.
      * @param string $alias    The alias to use for the host.
      *                         Will prompt if not passed.
-     *                         Defaults to same value as $user
+     *                         Defaults to same value as $user when prompting.
      *                          - with a number added to make it unique if necessary.
      * @param string $port     The SSH port.
      *                         Will prompt if not passed.
-     *                         Defaults to 22.
+     *                         Defaults to 22 when prompting.
      *
      * @return void
      */
@@ -578,7 +578,7 @@ class PSSH extends Console_Abstract
     }//end edit_host()
 
     /**
-     * Help info for TODO method
+     * Help info for init_host method
      *
      * @var array
      *
@@ -592,7 +592,25 @@ class PSSH extends Console_Abstract
         ["JSON file for team key data", "string"],
         ["Set up server CLI using cli_script", "boolean"],
     ];
-    public function init_host($alias, $copy_key = null, $copy_team_keys = null, $team_config = null, $cli = null)
+
+    /**
+     * Initialize host - interactive, or specify options
+     *
+     * @param string  $alias          The host alias to initialize.
+     *                                Will prompt if not passed.
+     * @param mixed   $copy_key       Whether to copy the individual's SSH key to the host.
+     *                                Will prompt if not passed.
+     * @param mixed   $copy_team_keys Whether to copy the team's SSH keys to the host.
+     *                                Will prompt if not passed and if $copy_key is true-ish.
+     *                                Defaults to false when prompting.
+     * @param string  $team_config    The config the team from which to pull SSH keys (if copying to host).
+     *                                Will prompt if not passed and if $copy_team_keys is true-ish.
+     * @param boolean $cli            Whether to run custom CLI setup script on server (if configured - PSSH::$cli_script)
+     *                                Will prompt if not passed and if $cli_script is configured.
+     *
+     * @return void
+     */
+    public function init_host(string $alias, mixed $copy_key = null, mixed $copy_team_keys = null, string $team_config = null, bool $cli = null)
     {
 
         // Copy Key?

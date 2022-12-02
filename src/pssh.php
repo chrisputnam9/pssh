@@ -676,7 +676,7 @@ ____KEYS____;
     }//end init_host()
 
     /**
-     * Help info for TODO method
+     * Help info for merge method
      *
      * @var array
      *
@@ -688,7 +688,17 @@ ____KEYS____;
         ["JSON file to merge into", "string", "required"],
         ["JSON file to ouput conflicts/overrides", "string", "required"],
     ];
-    public function merge($source_path, $target_path, $override_path)
+
+    /**
+     * Merge config from one JSON file into another
+     *
+     * @param string $source_path   JSON file to merge from.
+     * @param string $target_path   JSON file to merge into.
+     * @param string $override_path JSON file to ouput conflicts/overrides.
+     *
+     * @return void
+     */
+    public function merge(string $source_path, string $target_path, string $override_path)
     {
         $this->backup($target_path);
         $this->backup($override_path);
@@ -715,7 +725,7 @@ ____KEYS____;
     }//end merge()
 
     /**
-     * Help info for TODO method
+     * Help info for search method
      *
      * @var array
      *
@@ -724,9 +734,19 @@ ____KEYS____;
     protected $___search = [
         "Search for host configuration",
         ["Term(s) to search - separate with spaces", "string", "required"],
-        ["JSON config path(s) to search - defaults to json-config-paths", "string"],
+        ["JSON config path(s) to search - separate with commas - defaults to json-config-paths", "string"],
     ];
-    public function search($terms, $paths = null)
+
+    /**
+     * Search for host configuration:
+     *
+     * @param string $terms Term(s) to search - separate with spaces.
+     * @param mixed  $paths JSON config path(s) to search - comma-separate if multiple.
+     *                      Defaults to all known config paths.
+     *
+     * @return void
+     */
+    public function search(string $terms, mixed $paths = null)
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
@@ -795,7 +815,7 @@ ____KEYS____;
     }//end search()
 
     /**
-     * Help info for TODO method
+     * Help info for list method
      *
      * @var array
      *
@@ -805,9 +825,18 @@ ____KEYS____;
         "List all hosts",
         ["JSON config path(s) to list - defaults to json-config-paths", "string"],
     ];
-    public function list($paths = null)
+
+    /**
+     * List all hosts
+     *
+     * @param mixed $paths JSON config path(s) to list - comma-separate if multiple.
+     *              Defaults to all known config paths.
+     *
+     * @return void
+     */
+    public function list(mixed $paths = null)
     {
-        $this->search($paths);
+        $this->search("", $paths);
     }//end list()
 
     /**

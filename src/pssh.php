@@ -10,6 +10,8 @@
  * PSSH - PHP SSH Configuration Management Tool
  *
  *  - Defines the PSSH CLI tool
+ *  - Provides the user interface
+ *  - Uses PSSH_Config to interact with SSH config data
  */
 class PSSH extends Console_Abstract
 {
@@ -840,16 +842,19 @@ ____KEYS____;
     }//end list()
 
     /**
-     * Currently only supports private git repository
-     */
-    /**
-     * Help info for TODO method
+     * Help info for sync method
      *
      * @var array
      *
      * @internal
      */
     protected $___sync = "Sync config files based on 'sync' config/option value";
+
+    /**
+     * Sync config files based on 'sync' config/option value
+     *
+     * @return void
+     */
     public function sync()
     {
         if (empty($this->sync)) {
@@ -902,6 +907,8 @@ GITGNORE;
 
     /**
      * Init config defaults, then call parent
+     *
+     * @return boolean
      */
     public function initConfig(): bool
     {
@@ -926,4 +933,6 @@ GITGNORE;
 }//end class
 
 PSSH::run($argv);
+
+// Note: leave the end tag for packaging
 ?>

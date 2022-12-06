@@ -1,34 +1,84 @@
 <?php
+/**
+ * PSSH Class File
+ *
+ * @package pssh
+ * @author  chrisputnam9
+ */
 
 /**
- * PSSH Config Object
- *  - manage config data
- *  - read/write ssh/json
+ * PSSH Config Class
+ *
+ *  - Provides methods to manage SSH config data
+ *  - Used by PSSH which provides the interface
  */
 class PSSH_Config
 {
     /**
      * Map of keys to preferred case
+     *
+     *  - Loaded from PSSH_CONFIG_KEYS - see end of file
+     *
+     * @var array
      */
     public static $CONFIG_KEYS = null;
 
+    /**
+     * The loaded SSH config data
+     *
+     * @var array
+     */
     protected $data = null;
 
+    /**
+     * The team SSH Keys
+     *
+     *  - Loaded from SSH config data
+     *
+     * @var array
+     */
     protected $team_keys = null;
+
+    /**
+     * The team SSH keys identifier
+     *
+     *  - Outputs in comment before and after team keys on servers
+     *  - Loaded from SSH config data
+     *  - Defaults to 'team keys' if not set in config data
+     *
+     * @var string
+     */
     protected $team_keys_identifier = null;
 
+    /**
+     * The PHP Console tool class - instance of Console_Abstract
+     *
+     *  - Used to forward method calls via __call
+     *
+     * @var Console_Abstract
+     */
     protected $shell = null;
 
+    /**
+     * All hosts from loaded SSH config data, keyed by hostname (IP/URL)
+     *
+     * @var array
+     */
     protected $hosts_by_hostname = null;
 
-    public function __construct($shell)
+    /**
+     * Constructor - sets $shell property
+     *
+     * @param Console_Abstract $shell Instance of PHP Console tool class to which to forward method calls via __call.
+     */
+    public function __construct(Console_Abstract $shell)
     {
         $this->shell = $shell;
     }
 
-    /****************************************************************************************************
+    /*******************************************************************************************
      * Primary methods
-     ****************************************************************************************************/
+     ******************************************************************************************/
 
     /**
      * Add host

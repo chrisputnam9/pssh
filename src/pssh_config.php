@@ -74,22 +74,28 @@ class PSSH_Config
     public function __construct(Console_Abstract $shell)
     {
         $this->shell = $shell;
-    }
+    }//end __construct()
+
 
     /*******************************************************************************************
      * Primary methods
      ******************************************************************************************/
 
     /**
-     * Add host
-     * @param $alias - alias for the host
-     * @param $host - array of host info: ssh & pssh
-     * @param $force - force add, generate unique host if needed
-     * @return true if successful, false if failed
-     * - If exact copy of host already is in this config, that counts as success
-     * - On failure, host and alias are updated to prep for override
+     * Add a new SSH host to the loaded configuration
+     *
+     * @param string  $alias Alias for the host being added.
+     *                        - passed by reference and may be updated to be unique.
+     * @param array   $host  Host information to be added (hostname, port, user, etc).
+     *                        - passed by reference and may be updated to prep override.
+     * @param boolean $force Force add regardless of existing similar host
+     *                        - will generate unique alias if needed to avoid overwrite.
+     *
+     * @return boolean true if successful, false if failed
+     *          - If exact copy of host already is in this config, that counts as success
+     *          - On failure, host and alias are updated to prep for override
      */
-    public function add(&$alias, &$host, $force = false)
+    public function add(string &$alias, array &$host, bool $force = false): bool
     {
         $hostname = empty($host['ssh']['hostname']) ? null : $host['ssh']['hostname'];
         $port = empty($host['ssh']['port']) ? null : $host['ssh']['port'];
@@ -131,8 +137,8 @@ class PSSH_Config
             ) {
                 $override_host['pssh']['alias'] = $alias;
             }
-        } else // no config match, or forcing override
-        {
+        } else {
+            // no config match, or forcing override
             $alias = $this->autoAlias($alias);
 
             $this->data['hosts'][$alias] = $host;
@@ -147,7 +153,7 @@ class PSSH_Config
         $alias = $existing_config_alias;
         $host = $override_host;
         return false;
-    }
+    }//end add()
 
     /**
      * Clean Up Data
@@ -193,11 +199,13 @@ class PSSH_Config
                 $this->warn("$c hosts using alias '$final' - " . implode(", ", $keys));
             }
         }
-    }
+    }//end clean()
+
 
     /**
      * Find existing host by alias/hostname/user
-     * @param $host - alias or array of data:
+     *
+     * @param  $host - alias or array of data:
      *      [
      *          'alias' => $alias,
      *          'hostname' => $hostname,
@@ -269,13 +277,15 @@ class PSSH_Config
                     $return['hostname'][$_user][$alias] = $host;
                 }
             }
-        }
+        }//end if
 
         return $return;
-    }
+    }//end find()
+
 
     /**
      * Get hosts by alias, or all
+     *
      * @param $alias - leave out to return all
      */
     public function getHosts($alias = null)
@@ -285,10 +295,12 @@ class PSSH_Config
         }
 
         return empty($this->data['hosts'][$alias]) ? [] : [$this->data['hosts'][$alias]];
-    }
+    }//end getHosts()
+
 
     /**
      * Delete hosts by alias
+     *
      * @param $alias
      */
     public function deleteHost($alias)
@@ -299,20 +311,24 @@ class PSSH_Config
         }
 
         return false;
-    }
+    }//end deleteHost()
+
 
     /**
      * Set a host by alias with new data
+     *
      * @param $alias - to replace
      * @param $data - to replace with
      */
     public function setHost($alias, $data)
     {
         $this->data['hosts'][$alias] = $data;
-    }
+    }//end setHost()
+
 
     /**
      * Get hosts by hostname, or full map
+     *
      * @param $hostname - leave out to return all
      */
     public function getHostsByHostname($hostname = null)
@@ -337,7 +353,8 @@ class PSSH_Config
         }
 
         return empty($this->hosts_by_hostname[$hostname]) ? [] : $this->hosts_by_hostname[$hostname];
-    }
+    }//end getHostsByHostname()
+
 
     /**
      * Get team keys
@@ -357,7 +374,8 @@ class PSSH_Config
             }
         }
         return $this->team_keys;
-    }
+    }//end getTeamKeys()
+
 
     /**
      * Get team keys identifier
@@ -371,10 +389,12 @@ class PSSH_Config
             }
         }
         return $this->team_keys_identifier;
-    }
+    }//end getTeamKeysIdentifier()
+
 
     /**
      * Recursively diff host info as though creating an override
+     *
      * @param $host1 - Primary host - return this minus second
      * @param $host2 - Subtract info identical info in host2 from host1
      */
@@ -402,11 +422,13 @@ class PSSH_Config
         }
 
         return $host1;
-    }
+    }//end host_diff()
+
 
     /**
      * Merge hosts into target
-     * @param (PSSH_Config) $target - target of merge
+     *
+     * @param (PSSH_Config) $target   - target of merge
      * @param (PSSH_Config) $override - overrides go here when conflicts arise
      */
     public function merge($target, $override)
@@ -420,10 +442,12 @@ class PSSH_Config
                 $override->add($alias, $host, true);
             }
         }
-    }
+    }//end merge()
+
 
     /**
      * Read from JSON path(s)
+     *
      * @param $paths - string or array of strings for multiple paths to read from
      */
     public function readJSON($paths)
@@ -437,7 +461,6 @@ class PSSH_Config
         // $this->log('Loading json files:');
         foreach ($paths as $path) {
             // $this->log(" - $path");
-
             if (!file_exists($path)) {
                 // $this->log(" --- file doesn't exist, will be created");
                 continue;
@@ -447,7 +470,7 @@ class PSSH_Config
 
             $this->log("Decoding data from $path...");
             $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
-            //$decoded = json_decode($json, true);
+            // $decoded = json_decode($json, true);
             if (empty($decoded)) {
                 $this->error("Likely Syntax Error: $path");
             }
@@ -460,10 +483,12 @@ class PSSH_Config
         } elseif (count($unmerged_data) > 1) {
             $this->data = call_user_func_array('array_replace_recursive', $unmerged_data);
         }
-    }
+    }//end readJSON()
+
 
     /**
      * Read from SSH path
+     *
      * @param $path - string path to read from
      */
     public function readSSH($path)
@@ -479,7 +504,6 @@ class PSSH_Config
             $line = trim($line);
 
             // $this->log("$l: $line");
-
             // Skip Blank Lines
             if (empty($line)) {
                 // $this->log(' - blank - skipping');
@@ -520,8 +544,8 @@ class PSSH_Config
                 }
             } else {
                 $this->error("Unexpected syntax - check $path line $l");
-            }
-        }
+            }//end if
+        }//end while
 
         // Warn about any unknown keys our mapping didn't have
         if (!empty($original_keys)) {
@@ -535,13 +559,15 @@ class PSSH_Config
         }
 
         fclose($path_handle);
-    }
+    }//end readSSH()
+
 
     /**
      * Search - search for host config by:
      *  - host alias
      *  - domain or IP
      *  - username
+     *
      * @param $termstring - search string
      *  - separate terms with spaces
      */
@@ -603,7 +629,8 @@ class PSSH_Config
                 foreach ($patterns as $p => $pattern) {
                     if (!empty($target) and preg_match_all("`" . $pattern . "`i", $target, $matches)) {
                         $levity += ( ($p + 1) * 10)  + ($t + 1);
-                        continue; //quit as soon as we have a match
+                        continue;
+// quit as soon as we have a match
                     }
                 }
             }
@@ -619,7 +646,7 @@ class PSSH_Config
             }
 
             $h++;
-        }
+        }//end foreach
 
         krsort($results);
 
@@ -632,29 +659,33 @@ class PSSH_Config
         }
 
         return $return;
-    }
+    }//end search()
+
 
     /**
      * Write to JSON path
+     *
      * @param $path - string path to write to
      */
     public function writeJSON($path)
     {
         /*
-        if (preg_match("/.hjson$/", $path))
-        {
+            if (preg_match("/.hjson$/", $path))
+            {
             $json = $this->json_encode($this->data);
-        }
-        else
-        {
-         */
+            }
+            else
+            {
+        */
             $json = json_encode($this->data, JSON_PRETTY_PRINT);
-        //}
+        // }
         file_put_contents($path, $json);
-    }
+    }//end writeJSON()
+
 
     /**
      * Write to SSH path
+     *
      * @param $path - string path to read to
      */
     public function writeSSH($path)
@@ -698,10 +729,12 @@ class PSSH_Config
         fwrite($path_handle, "\n# vim: syntax=sshconfig");
 
         fclose($path_handle);
-    }
+    }//end writeSSH()
+
 
     /**
      * Convert host data to SSH format
+     *
      * @param $host - host data to convert
      **/
     public function writeSSHHost($host)
@@ -713,7 +746,8 @@ class PSSH_Config
             $output .= '    ' . $Key . ' ' . $value . "\n";
         }
         return $output;
-    }
+    }//end writeSSHHost()
+
 
     /****************************************************************************************************
      * Secondary/Helper Methods
@@ -735,8 +769,10 @@ class PSSH_Config
             return true;
         }
 
-        return false;// no init was needed
-    }
+        return false;
+// no init was needed
+    }//end initData()
+
 
     /**
      * Make sure alias is unique, add 1/2/3, etc as needed to ensure
@@ -751,10 +787,12 @@ class PSSH_Config
         }
 
         return $new_alias;
-    }
+    }//end autoAlias()
+
 
     /**
      * Clean hostname, lookup IP if needed
+     *
      * @param $hostname - domain/ip to clean
      * @param $pssh - config of host to check for settings
      * @param $certain - whether we're certain the hostname is intended to be a hostname
@@ -764,7 +802,6 @@ class PSSH_Config
     public function cleanHostname($hostname, $pssh = [], $certain = true)
     {
         // $this->log("cleanHostname($hostname, ..., $certain)");
-
         // Make sure lookup isn't disabled by pssh config
         $lookup = (
             !is_array($pssh)
@@ -805,10 +842,11 @@ class PSSH_Config
             }
         } else {
             // $this->log("Hostname Approved ($hostname)");
-        }
+        }//end if
 
         return $hostname;
-    }
+    }//end cleanHostname()
+
 
     /**
      * Pass through functions for shell
@@ -820,8 +858,9 @@ class PSSH_Config
             $this->shell->log(" __call: Attempting to call $method on separate class...");
             return call_user_func_array($shell_call, $arguments);
         }
-    }
-}
+    }//end __call()
+}//end class
+
 PSSH_Config::$CONFIG_KEYS = $PSSH_CONFIG_KEYS;
 
 // Note: leave the end tag for packaging

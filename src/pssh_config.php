@@ -160,6 +160,9 @@ class PSSH_Config
      * - change hostnames to IP
      * - set up default alias
      * - set up default ssh key
+     * - sort data by keys
+     *
+     * @return void
      */
     public function clean()
     {
@@ -203,30 +206,34 @@ class PSSH_Config
 
 
     /**
-     * Find existing host by alias/hostname/user
+     * Find a matching host configuration by alias/hostname/user
      *
-     * @param  $host - alias or array of data:
-     *      [
-     *          'alias' => $alias,
-     *          'hostname' => $hostname,
-     *          'user' => $user,
-     *      ]
-     *      NOTE: will only search user if IP is specified
-     * @return array of host(s) that were found
-     *  - indexed by what they matched (alias or hostname=>user)
-     *  - each array will be empty if none found for that criteria
-     *      [
-     *          'alias' => [
-     *              '<alias>' => $host
-     *          ]
-     *          'hostname' => [
-     *              '<username>' => [
-     *                  '<alias>' => $host
-     *              ]
-     *          ]
-     *      ]
+     * @param mixed $search Either an alias or an array of data to search for:
+     *                          [
+     *                              'alias' => $alias,
+     *                              'hostname' => $hostname,
+     *                              'user' => $user,
+     *                          ]
+     *                          NOTE: will only search user if IP is specified, since otherwise there could be a lot of matches.
+     *
+     * @return array The host(s) that were found, if any
+     *                - indexed by what matched (alias or hostname => user)
+     *                - each array will be empty if none found for that criteria
+     *                  [
+     *                      'alias' => [
+     *                          '<alias>' => $host,
+     *                          ...
+     *                      ],
+     *                      'hostname' => [
+     *                          '<username>' => [
+     *                              '<alias>' => $host,
+     *                              ...
+     *                          ],
+     *                          ...
+     *                      ],
+     *                  ]
      */
-    public function find($search)
+    public function find(mixed $search): array
     {
         // The info to search by
         $alias = null;
@@ -552,7 +559,7 @@ class PSSH_Config
             $original_keys = array_unique($original_keys);
             sort($original_keys);
             $this->warn(
-                'Unknwon Config Key(s) Present' .
+                'Unknown Config Key(s) Present' .
                 ' - if these are valid, the PSSH code should be updated to know about them.'
             );
             $this->output($original_keys);
@@ -629,8 +636,8 @@ class PSSH_Config
                 foreach ($patterns as $p => $pattern) {
                     if (!empty($target) and preg_match_all("`" . $pattern . "`i", $target, $matches)) {
                         $levity += ( ($p + 1) * 10)  + ($t + 1);
+                        // quit as soon as we have a match
                         continue;
-// quit as soon as we have a match
                     }
                 }
             }
@@ -769,8 +776,8 @@ class PSSH_Config
             return true;
         }
 
+        // no init was needed
         return false;
-// no init was needed
     }//end initData()
 
 

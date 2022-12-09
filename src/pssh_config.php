@@ -76,7 +76,6 @@ class PSSH_Config
         $this->shell = $shell;
     }//end __construct()
 
-
     /*******************************************************************************************
      * Primary methods
      ******************************************************************************************/
@@ -204,7 +203,6 @@ class PSSH_Config
         }
     }//end clean()
 
-
     /**
      * Find a matching host configuration by alias/hostname/user
      *
@@ -289,13 +287,14 @@ class PSSH_Config
         return $return;
     }//end find()
 
-
     /**
      * Get hosts by alias, or all
      *
-     * @param $alias - leave out to return all
+     * @param string $alias Specific host alias to retrieve - otherwise returns all hosts.
+     *
+     * @return array Array of all hosts found - or empty array if none found.
      */
-    public function getHosts($alias = null)
+    public function getHosts(string $alias = null): array
     {
         if (is_null($alias)) {
             return empty($this->data['hosts']) ? [] : $this->data['hosts'];
@@ -304,13 +303,14 @@ class PSSH_Config
         return empty($this->data['hosts'][$alias]) ? [] : [$this->data['hosts'][$alias]];
     }//end getHosts()
 
-
     /**
      * Delete hosts by alias
      *
-     * @param $alias
+     * @param string $alias Alias of the host to be deleted.
+     *
+     * @return boolean Whether the host existed prior to being removed.
      */
-    public function deleteHost($alias)
+    public function deleteHost(string $alias): boolean
     {
         if (!empty($alias) and isset($this->data['hosts'][$alias])) {
             unset($this->data['hosts'][$alias]);
@@ -320,25 +320,30 @@ class PSSH_Config
         return false;
     }//end deleteHost()
 
-
     /**
-     * Set a host by alias with new data
+     * Add (or update) a host with the given alias with the provided data
      *
-     * @param $alias - to replace
-     * @param $data - to replace with
+     * @param string $alias The alias of the host to be added (or updated).
+     * @param array  $data  The data to set for the host.
+     *
+     * @return void
      */
-    public function setHost($alias, $data)
+    public function setHost(string $alias, array $data)
     {
         $this->data['hosts'][$alias] = $data;
     }//end setHost()
 
-
     /**
-     * Get hosts by hostname, or full map
+     * Get hosts by hostname (domain or IP)
      *
-     * @param $hostname - leave out to return all
+     *  - If $hostname is specified, return a host that uses the given hostname - if any
+     *  - Otherwise, return a full array map of hosts, keyed by hostname
+     *
+     * @param string $hostname An optional specific hostname to look for.
+     *
+     * @return array Either the full array map of hosts, the specific host data found with given $hostname, or an empty array if none found.
      */
-    public function getHostsByHostname($hostname = null)
+    public function getHostsByHostname(string $hostname = null): array
     {
         if (is_null($this->hosts_by_hostname)) {
             $this->hosts_by_hostname = [];
@@ -362,11 +367,12 @@ class PSSH_Config
         return empty($this->hosts_by_hostname[$hostname]) ? [] : $this->hosts_by_hostname[$hostname];
     }//end getHostsByHostname()
 
-
     /**
-     * Get team keys
+     * Get team keys based on loaded config
+     *
+     * @return array The team key list.
      */
-    public function getTeamKeys()
+    public function getTeamKeys(): array
     {
         if (is_null($this->team_keys)) {
             $this->log("Reading in team keys...");
@@ -383,27 +389,11 @@ class PSSH_Config
         return $this->team_keys;
     }//end getTeamKeys()
 
-
-    /**
-     * Get team keys identifier
-     */
-    public function getTeamKeysIdentifier()
-    {
-        if (is_null($this->team_keys_identifier)) {
-            $this->team_keys_identifier = 'team keys';
-            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys_identifier'])) {
-                $this->team_keys_identifier = $this->data['pssh']['team_keys_identifier'];
-            }
-        }
-        return $this->team_keys_identifier;
-    }//end getTeamKeysIdentifier()
-
-
     /**
      * Recursively diff host info as though creating an override
      *
-     * @param $host1 - Primary host - return this minus second
-     * @param $host2 - Subtract info identical info in host2 from host1
+     * @param array $host1 The primary host.
+     * @param array $host2 Subtract info identical info in host2 from host1
      */
     public function host_diff($host1, $host2, $p = "")
     {
@@ -431,7 +421,6 @@ class PSSH_Config
         return $host1;
     }//end host_diff()
 
-
     /**
      * Merge hosts into target
      *
@@ -450,7 +439,6 @@ class PSSH_Config
             }
         }
     }//end merge()
-
 
     /**
      * Read from JSON path(s)
@@ -492,7 +480,6 @@ class PSSH_Config
         }
     }//end readJSON()
 
-
     /**
      * Read from SSH path
      *
@@ -532,7 +519,6 @@ class PSSH_Config
                     $original_keys[$key] = $match[1];
                 }
 
-
                 // $this->log(" - Parsed as [$key => $value]");
                 if ($key == 'host') {
                     $host = $value;
@@ -567,7 +553,6 @@ class PSSH_Config
 
         fclose($path_handle);
     }//end readSSH()
-
 
     /**
      * Search - search for host config by:
@@ -631,7 +616,6 @@ class PSSH_Config
                 $host['pssh']['alias'] = $alias;
             }
 
-
             foreach ($targets as $t => $target) {
                 foreach ($patterns as $p => $pattern) {
                     if (!empty($target) and preg_match_all("`" . $pattern . "`i", $target, $matches)) {
@@ -668,7 +652,6 @@ class PSSH_Config
         return $return;
     }//end search()
 
-
     /**
      * Write to JSON path
      *
@@ -688,7 +671,6 @@ class PSSH_Config
         // }
         file_put_contents($path, $json);
     }//end writeJSON()
-
 
     /**
      * Write to SSH path
@@ -738,7 +720,6 @@ class PSSH_Config
         fclose($path_handle);
     }//end writeSSH()
 
-
     /**
      * Convert host data to SSH format
      *
@@ -754,7 +735,6 @@ class PSSH_Config
         }
         return $output;
     }//end writeSSHHost()
-
 
     /****************************************************************************************************
      * Secondary/Helper Methods
@@ -780,7 +760,6 @@ class PSSH_Config
         return false;
     }//end initData()
 
-
     /**
      * Make sure alias is unique, add 1/2/3, etc as needed to ensure
      */
@@ -795,7 +774,6 @@ class PSSH_Config
 
         return $new_alias;
     }//end autoAlias()
-
 
     /**
      * Clean hostname, lookup IP if needed
@@ -853,7 +831,6 @@ class PSSH_Config
 
         return $hostname;
     }//end cleanHostname()
-
 
     /**
      * Pass through functions for shell

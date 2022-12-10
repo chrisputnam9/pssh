@@ -391,27 +391,26 @@ class PSSH_Config
 
     /**
      * Recursively diff host info as though creating an override
+     *  - Leave only data that differs from the data in the second host being compared
      *
      * @param array $host1 The primary host.
-     * @param array $host2 Subtract info identical info in host2 from host1
+     * @param array $host2 The host whose data will be subtracted from $host1.
+     *
+     * @return array resulting data in $host1 that is not present or differs from data in $host2.
      */
-    public function host_diff($host1, $host2, $p = "")
+    public function host_diff(array $host1, array $host2): array
     {
         foreach ($host1 as $key => $value1) {
-            // $this->log($p.$key);
-            if (isset($host2[$key])) {
+            if (!empty($host2[$key])) {
                 $value2 = $host2[$key];
 
                 if (is_array($value1) and is_array($value2)) {
-                    // $this->log($p.'RECUR');
-                    $host1[$key] = $this->host_diff($value1, $value2, $p . "-");
+                    $host1[$key] = $this->host_diff($value1, $value2);
                     if (empty($host1[$key])) {
-                        // $this->log($p.'REMOVE');
                         unset($host1[$key]);
                     }
                 } else {
                     if ($value1 == $value2) {
-                        // $this->log($p.'REMOVE');
                         unset($host1[$key]);
                     }
                 }
@@ -422,12 +421,16 @@ class PSSH_Config
     }//end host_diff()
 
     /**
-     * Merge hosts into target
+     * Merge the loaded host configurations into a separate set of host configurations (instance of PSSH_Config).
      *
-     * @param (PSSH_Config) $target   - target of merge
-     * @param (PSSH_Config) $override - overrides go here when conflicts arise
+     *  - When there are conflicts, they will be placed in a separate set of host configurations for manual review
+     *
+     * @param PSSH_Config $target   Configuration to merge into.
+     * @param PSSH_Config $override Configuration where conflicts are placed for manual review.
+     *
+     * @return void
      */
-    public function merge($target, $override)
+    public function merge(PSSH_Config $target, PSSH_Config $override)
     {
         $init = $this->initData();
 
@@ -441,11 +444,13 @@ class PSSH_Config
     }//end merge()
 
     /**
-     * Read from JSON path(s)
+     * Read from JSON path(s) - load host configurations into this instance.
      *
-     * @param $paths - string or array of strings for multiple paths to read from
+     * @param mixed $paths Path(s) to JSON files from which to load configuration.
+     *
+     * @return void
      */
-    public function readJSON($paths)
+    public function readJSON(mixed $paths)
     {
         $init = $this->initData();
 
@@ -481,11 +486,13 @@ class PSSH_Config
     }//end readJSON()
 
     /**
-     * Read from SSH path
+     * Read from SSH config file - load host configurations into this instance.
      *
-     * @param $path - string path to read from
+     * @param string $path Path to the SSH config file from which to load configuration.
+     *
+     * @return void
      */
-    public function readSSH($path)
+    public function readSSH(string $path)
     {
         $path_handle = fopen($path, 'r');
         $init = $this->initData();

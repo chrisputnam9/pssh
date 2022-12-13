@@ -310,7 +310,7 @@ class PSSH_Config
      *
      * @return boolean Whether the host existed prior to being removed.
      */
-    public function deleteHost(string $alias): boolean
+    public function deleteHost(string $alias): bool
     {
         if (!empty($alias) and isset($this->data['hosts'][$alias])) {
             unset($this->data['hosts'][$alias]);
@@ -567,10 +567,11 @@ class PSSH_Config
      *  - domain or IP
      *  - username
      *
-     * @param $termstring - search string
-     *  - separate terms with spaces
+     * @param string $termstring Search string - can be multiple terms separated by spaces.
+     *
+     * @return array Hosts found that match the search, keyed by alias.
      */
-    public function search($termstring)
+    public function search(string $termstring): array
     {
         $termstring = strtolower(trim($termstring));
 
@@ -598,7 +599,7 @@ class PSSH_Config
         $patterns = [
             4 => "\b$termstring\b",
             3 => "$termstring",
-            2 => "\b4$terms_pattern\b",
+            2 => "\b$terms_pattern\b",
             1 => "$terms_pattern",
         ];
 
@@ -660,31 +661,31 @@ class PSSH_Config
     }//end search()
 
     /**
-     * Write to JSON path
+     * Write out currently loaded configuration to JSON at the specified file path.
      *
-     * @param $path - string path to write to
+     * @param string $path The path to which to write the JSON version of the current loaded configuration.
+     *                      - If the path ends in .hjson, contents will be written as HJSON
+     *
+     * @return void
      */
-    public function writeJSON($path)
+    public function writeJSON(string $path)
     {
-        /*
-            if (preg_match("/.hjson$/", $path))
-            {
+        if (preg_match("/.hjson$/", $path)) {
             $json = $this->json_encode($this->data);
-            }
-            else
-            {
-        */
+        } else {
             $json = json_encode($this->data, JSON_PRETTY_PRINT);
-        // }
+        }
         file_put_contents($path, $json);
     }//end writeJSON()
 
     /**
-     * Write to SSH path
+     * Write the currently loaded configuration to SSH config format at the specified file path.
      *
-     * @param $path - string path to read to
+     * @param string $path The path to which to write the SSH config version of the current loaded configuration.
+     *
+     * @return void
      */
-    public function writeSSH($path)
+    public function writeSSH(string $path)
     {
         $path_handle = fopen($path, 'w');
 
@@ -728,11 +729,13 @@ class PSSH_Config
     }//end writeSSH()
 
     /**
-     * Convert host data to SSH format
+     * Convert the specified host data to SSH config format
      *
-     * @param $host - host data to convert
+     * @param array $host The host data to be converted.
+     *
+     * @return string SSH config formatted version of the host data.
      **/
-    public function writeSSHHost($host)
+    public function writeSSHHost(array $host): string
     {
         $output = "";
         $output .= 'Host ' . $host['pssh']['alias'] . "\n";
@@ -748,11 +751,12 @@ class PSSH_Config
      ****************************************************************************************************/
 
     /**
-     * Initialize data
-     *  - return true if it was empty (null)
-     *  - return false if it was not
+     * Initialize the configuration-holding $data property
+     *
+     * @return boolean Whether $data actually needed to be initialized.
+     *                  - Ie. true if $data was null - not yet initialized, false if it already was.
      */
-    public function initData()
+    public function initData(): bool
     {
         if (is_null($this->data)) {
             $this->data = [
@@ -768,9 +772,13 @@ class PSSH_Config
     }//end initData()
 
     /**
-     * Make sure alias is unique, add 1/2/3, etc as needed to ensure
+     * Make sure the provided alias is unique, or add 1/2/3, etc as needed to ensure uniqueness
+     *
+     * @param string $alias The alias to be made unique.
+     *
+     * @return string The unique version of the alias, with a number appended to ensure uniqueness.
      */
-    public function autoAlias($alias)
+    public function autoAlias(string $alias): string
     {
         $i = 0;
         $new_alias = $alias;

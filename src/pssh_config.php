@@ -57,7 +57,7 @@ class PSSH_Config
      *
      * @var Console_Abstract
      */
-    protected $shell = null;
+    protected $main_tool = null;
 
     /**
      * All hosts from loaded SSH config data, keyed by hostname (IP/URL)
@@ -67,13 +67,13 @@ class PSSH_Config
     protected $hosts_by_hostname = null;
 
     /**
-     * Constructor - sets $shell property
+     * Constructor - sets $main_tool property
      *
-     * @param Console_Abstract $shell Instance of PHP Console tool class to which to forward method calls via __call.
+     * @param Console_Abstract $main_tool Instance of PHP Console tool class to which to forward method calls via __call.
      */
-    public function __construct(Console_Abstract $shell)
+    public function __construct(Console_Abstract $main_tool)
     {
-        $this->shell = $shell;
+        $this->main_tool = $main_tool;
     }//end __construct()
 
     /*******************************************************************************************
@@ -664,7 +664,7 @@ class PSSH_Config
      * Write out currently loaded configuration to JSON at the specified file path.
      *
      * @param string $path The path to which to write the JSON version of the current loaded configuration.
-     *                      - If the path ends in .hjson, contents will be written as HJSON
+     *                      - If the path ends in .hjson, contents will be written as HJSON.
      *
      * @return void
      */
@@ -791,17 +791,18 @@ class PSSH_Config
     }//end autoAlias()
 
     /**
-     * Clean hostname, lookup IP if needed
+     * Clean a hostname - attempt to standardize as IP Address, looking up via DNS if needed.
      *
-     * @param $hostname - domain/ip to clean
-     * @param $pssh - config of host to check for settings
-     * @param $certain - whether we're certain the hostname is intended to be a hostname
-     *  If certain, we'll warn if we can't look it up
-     *  If uncertain, we'll validate it as a URL before looking up
+     * @param string $hostname The hsotname - domain or IP to verify and clean.
+     * @param array  $pssh     The host configuration to check for settings.
+     * @param mixed  $certain  Whether we're certain the hostname is intended to be a hostname.
+     *               - If certain, we'll warn if we can't look it up.
+     *               - If not certain, we'll validate it as a URL before looking up.
+     *
+     * @return string The hostname, cleaned as best we can - converted to an IP address ideally.
      */
-    public function cleanHostname($hostname, $pssh = [], $certain = true)
+    public function cleanHostname(string $hostname, array $pssh = [], mixed $certain = true): string
     {
-        // $this->log("cleanHostname($hostname, ..., $certain)");
         // Make sure lookup isn't disabled by pssh config
         $lookup = (
             !is_array($pssh)
@@ -814,15 +815,19 @@ class PSSH_Config
 
         // Canonicalize to IP Address
         if (
-            // Not empty, and not specifically instructed against lookup
-            !empty($hostname) and $lookup
+            // Not empty
+            !empty($hostname)
+
+            // Not specifically instructed against lookup
+            and $lookup
+
             // It's not already an IP
             and !$valid_ip
+
             // Either we're certain it's a hostname
             // or it looks like a URL
             and ($certain or $valid_url)
         ) {
-            // $this->log("Looking up $hostname");
             $info = @dns_get_record($hostname, DNS_A);
             if (
                 empty($info)
@@ -840,23 +845,33 @@ class PSSH_Config
             if (filter_var($ip, FILTER_VALIDATE_IP)) {
                 $hostname = $ip;
             }
-        } else {
-            // $this->log("Hostname Approved ($hostname)");
-        }//end if
+        }
 
         return $hostname;
     }//end cleanHostname()
 
     /**
-     * Pass through functions for shell
+     * Magic handling for subcommands to call main command methods
+     *
+     *  - Primarly used as an organization tool
+     *  - Allows us to keep some methods in console_abstract and still have them available in other places
+     *  - FWIW, not super happy with this approach, but it works for now
+     *
+     * @param string $method    The method that is being called.
+     * @param array  $arguments The arguments being passed to the method.
+     *
+     * @throws Exception If the method can't be found on the "main_tool" instance.
+     * @return mixed If able to call the method on the "main_tool" (instance of Console_Abstract) then, return the value from calling that method.
      */
-    public function __call($method, $arguments)
+    public function __call(string $method, array $arguments): mixed
     {
-        $shell_call = [$this->shell, $method];
-        if (is_callable($shell_call)) {
-            $this->shell->log(" __call: Attempting to call $method on separate class...");
-            return call_user_func_array($shell_call, $arguments);
+        $callable = [$this->main_tool, $method];
+        if (is_callable($callable)) {
+            $this->main_tool->log("Attempting to call $method on Console_Abstract instance");
+            return call_user_func_array($callable, $arguments);
         }
+
+        throw new Exception("Invalid class method '$method'");
     }//end __call()
 }//end class
 

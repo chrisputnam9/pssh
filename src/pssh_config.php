@@ -390,6 +390,25 @@ class PSSH_Config
     }//end getTeamKeys()
 
     /**
+     * Get Team Keys Identifier
+     *
+     * @return string The team key identifier string.
+     */
+    public function getTeamKeysIdentifier()
+    {
+        if (is_null($this->team_keys_identifier)) {
+            $this->team_keys_identifier = 'team keys';
+            $this->log("Reading in team keys...");
+            $this->team_keys_identifier = array();
+            if (!empty($this->data['pssh']) and !empty($this->data['pssh']['team_keys_identifier'])) {
+                $this->team_keys_identifier = $this->data['pssh']['team_keys_identifier'];
+            }
+        }
+        return $this->team_keys_identifier;
+    }//end getTeamKeysIdentifier()
+
+
+    /**
      * Recursively diff host info as though creating an override
      *  - Leave only data that differs from the data in the second host being compared
      *

@@ -60,6 +60,13 @@ class PSSH_Config
     protected $main_tool = null;
 
     /**
+     * A map of all aliases to their host key
+     *
+     * @var array
+     */
+    protected $alias_map = null;
+
+    /**
      * All hosts from loaded SSH config data, keyed by hostname (IP/URL)
      *
      * @var array
@@ -178,9 +185,12 @@ class PSSH_Config
         foreach ($this->data['hosts'] as $alias => &$host) {
             $hostname = empty($host['ssh']['hostname']) ? false : $host['ssh']['hostname'];
 
-            // Set up alias
+            // Set up aliases
             if (empty($host['pssh']['alias'])) {
                 $host['pssh']['alias'] = $alias;
+            }
+            if (empty($host['pssh']['alias_additional'])) {
+                $host['pssh']['alias_additional'] = [];
             }
 
             $pssh_alias = $host['pssh']['alias'];
@@ -193,7 +203,7 @@ class PSSH_Config
             if (!empty($hostname)) {
                 $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname'], $host['pssh']);
             }
-        }
+        }//end foreach
 
         foreach ($final_map as $final => $keys) {
             $c = count($keys);
@@ -286,6 +296,19 @@ class PSSH_Config
 
         return $return;
     }//end find()
+
+    /**
+     * Get a map of aliases to host keys
+     *
+     * @return array Array map with all configured aliases as keys and host config keys as values.
+     */
+    public function getAliasMap() {
+        if (is_null($this->alias_map)) {
+            $this->alias_map = [];
+            // TODO
+        }
+        return $this->alias_map;
+    }
 
     /**
      * Get hosts by alias, or all

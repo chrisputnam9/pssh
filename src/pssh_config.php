@@ -302,13 +302,15 @@ class PSSH_Config
      *
      * @return array Array map with all configured aliases as keys and host config keys as values.
      */
-    public function getAliasMap() {
+    public function getAliasMap()
+    {
         if (is_null($this->alias_map)) {
             $this->alias_map = [];
             // TODO
         }
         return $this->alias_map;
-    }
+    }//end getAliasMap()
+
 
     /**
      * Get hosts by alias, or all
@@ -496,6 +498,9 @@ class PSSH_Config
     {
         $init = $this->initData();
 
+        // Clean out derivitive data
+        $this->resetDerivedData();
+
         $paths = $this->prepArg($paths, []);
 
         $unmerged_data = [];
@@ -538,6 +543,9 @@ class PSSH_Config
     {
         $path_handle = fopen($path, 'r');
         $init = $this->initData();
+
+        // Clean out derivitive data
+        $this->resetDerivedData();
 
         $original_keys = [];
 
@@ -812,6 +820,21 @@ class PSSH_Config
         // no init was needed
         return false;
     }//end initData()
+
+    /**
+     * Reset derived data - run when loading from files to make sure data is derived
+     *  properly from all combined data sources
+     *
+     * @return void
+     */
+    private function resetDerivedData()
+    {
+        $this->alias_map = null;
+        $this->hosts_by_hostname = null;
+        $this->team_keys = null;
+        $this->team_keys_identifier = null;
+    }//end resetDerivedData()
+
 
     /**
      * Make sure the provided alias is unique, or add 1/2/3, etc as needed to ensure uniqueness

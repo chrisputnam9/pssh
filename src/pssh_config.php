@@ -306,7 +306,16 @@ class PSSH_Config
     {
         if (is_null($this->alias_map)) {
             $this->alias_map = [];
-            // TODO
+            foreach ($this->getHosts() as $key => $host) {
+                foreach (array_merge([$host['pssh']['alias']], $host['pssh']['alias_additional']) as $alias) {
+                    if (isset($this->alias_map[$alias])) {
+                        $prior_key = $this->alias_map[$alias];
+                        $this->warn("Duplicate alias - both host '$prior_key' and '$key' have the same alias specified. Host '$prior_key' will take precedence.");
+                    } else {
+                        $this->alias_map[$alias] = $key;
+                    }
+                }
+            }
         }
         return $this->alias_map;
     }//end getAliasMap()
@@ -325,7 +334,14 @@ class PSSH_Config
             return empty($this->data['hosts']) ? [] : $this->data['hosts'];
         }
 
-        return empty($this->data['hosts'][$alias]) ? [] : [$this->data['hosts'][$alias]];
+        // If alias specified, use Alias map
+        $alias_map = $this->getAliasMap();
+        $key = $alias_map[$alias] ?? false;
+        if ($key && isset($this->data['hosts'][$key])) {
+            return $this->data['hosts'][$key];
+        }
+
+        return [];
     }//end getHosts()
 
     /**
@@ -737,6 +753,9 @@ class PSSH_Config
      */
     public function writeSSH(string $path)
     {
+        $host_map = $this->getHosts();
+        $alias_map = $this->getAliasMap();
+
         $path_handle = fopen($path, 'w');
 
         // $this->log("Outputting Comment");
@@ -763,12 +782,13 @@ class PSSH_Config
         fwrite($path_handle, "# ---------------------------------------\n");
         fwrite($path_handle, "# HOSTS\n");
         fwrite($path_handle, "# ---------------------------------------\n");
-        foreach ($this->getHosts() as $alias => $host_config) {
+        foreach ($alias_map as $alias => $key) {
+            $host_config = $host_map[$key];
             if (empty($host_config['pssh']['alias'])) {
-                $host_config['pssh']['alias'] = $alias;
+                $host_config['pssh']['alias'] = $key;
             }
 
-            $host_output = $this->writeSSHHost($host_config);
+            $host_output = $this->writeSSHHost($alias, $host_config);
             fwrite($path_handle, $host_output);
         }
 
@@ -781,14 +801,15 @@ class PSSH_Config
     /**
      * Convert the specified host data to SSH config format
      *
-     * @param array $host The host data to be converted.
+     * @param string $alias The alias of the host to be written.
+     * @param array  $host  The host data to be written.
      *
      * @return string SSH config formatted version of the host data.
      **/
-    public function writeSSHHost(array $host): string
+    public function writeSSHHost(string $alias, array $host): string
     {
         $output = "";
-        $output .= 'Host ' . $host['pssh']['alias'] . "\n";
+        $output .= 'Host ' . $alias . "\n";
         foreach ($host['ssh'] as $key => $value) {
             $Key = isset(self::$CONFIG_KEYS[$key]) ? self::$CONFIG_KEYS[$key] : ucwords($key);
             $output .= '    ' . $Key . ' ' . $value . "\n";

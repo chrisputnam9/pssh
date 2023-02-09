@@ -320,7 +320,6 @@ class PSSH_Config
         return $this->alias_map;
     }//end getAliasMap()
 
-
     /**
      * Get hosts by alias, or all
      *

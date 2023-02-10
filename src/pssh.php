@@ -254,23 +254,24 @@ class PSSH extends Console_Abstract
         }
 
         // Host Alias
-        if (is_null($alias)) {
-            do {
+        do {
+            if (is_null($alias)) {
                 $default = $config->autoAlias($user);
                 $input_alias = $this->input('Primary Alias', $default);
-                $host_using_alias = $config->getHosts($input_alias);
+            } else {
+                $input_alias = $alias;
+                $this->output("Primary Alias: $alias");
+            }
 
-                print_r($host_using_alias);
+            $host_using_alias = $config->getHosts($input_alias);
 
-                if (empty($host_using_alias)) {
-                    $alias = $input_alias;
-                } else {
-                    $this->warn("An existing host is already using that alias. Please enter a new one.");
-                }
-            } while (empty($alias));
-        } else {
-            $this->output("Primary Alias: $alias");
-        }
+            if (empty($host_using_alias)) {
+                $alias = $input_alias;
+            } else {
+                $alias = null;
+                $this->warn("An existing host is already using that alias. Please enter a new one.");
+            }
+        } while (empty($alias));
 
         // Port
         if (is_null($port)) {

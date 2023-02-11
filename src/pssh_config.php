@@ -337,7 +337,7 @@ class PSSH_Config
         $alias_map = $this->getAliasMap();
         $key = $alias_map[$alias] ?? false;
         if ($key && isset($this->data['hosts'][$key])) {
-            return $this->data['hosts'][$key];
+            return [$this->data['hosts'][$key]];
         }
 
         return [];
@@ -381,13 +381,15 @@ class PSSH_Config
      *
      * @param string $hostname An optional specific hostname to look for.
      *
-     * @return array Either the full array map of hosts, the specific host data found with given $hostname, or an empty array if none found.
+     * @return array Either the full array map of keys to hosts,
+     *                the specific host data found with given $hostname,
+     *                or an empty array if none found.
      */
     public function getHostsByHostname(string $hostname = null): array
     {
         if (is_null($this->hosts_by_hostname)) {
             $this->hosts_by_hostname = [];
-            foreach ($this->getHosts() as $alias => $host) {
+            foreach ($this->getHosts() as $key => $host) {
                 if (empty($host['ssh']['hostname'])) {
                     continue;
                 }
@@ -396,7 +398,7 @@ class PSSH_Config
                 if (!isset($this->hosts_by_hostname[$_hostname])) {
                     $this->hosts_by_hostname[$_hostname] = [];
                 }
-                $this->hosts_by_hostname[$_hostname][$alias] = $host;
+                $this->hosts_by_hostname[$_hostname][$key] = $host;
             }
         }
 

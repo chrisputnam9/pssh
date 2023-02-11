@@ -772,6 +772,13 @@ ____KEYS____;
 
         $results = $config->search($terms);
 
+        foreach ($results as $key => $host) {
+            $results[$key]['_alias_display'] = array_merge(
+                [$host['pssh']['alias']],
+                $host['pssh']['alias_additional']
+            );
+        }
+
         if (empty($results)) {
             $this->output("No results found");
         } else {
@@ -779,7 +786,7 @@ ____KEYS____;
                 $this,
                 $results,
                 [
-                    'template' => "{pssh:alias|%-'.50s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
+                    'template' => "{_alias_display|%-'.50s} {ssh:user}{ssh:hostname|@%s}{ssh:port|:%s}",
                     'reload_function' => function ($reload_data) {
                         $config = new PSSH_Config($this);
                         $config->readJSON($reload_data['paths']);

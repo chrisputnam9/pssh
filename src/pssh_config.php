@@ -333,9 +333,8 @@ class PSSH_Config
             return empty($this->data['hosts']) ? [] : $this->data['hosts'];
         }
 
-        // If alias specified, use Alias map
-        $alias_map = $this->getAliasMap();
-        $key = $alias_map[$alias] ?? false;
+        // If alias specified, get host with that alias, if any
+        $key = $this->getHostKey($alias);
         if ($key && isset($this->data['hosts'][$key])) {
             return [$this->data['hosts'][$key]];
         }
@@ -370,8 +369,25 @@ class PSSH_Config
      */
     public function setHost(string $alias, array $data)
     {
-        $this->data['hosts'][$alias] = $data;
+        // First, we have to get the actual unique *key* of the host with this alias
+        $key = $this->getHostKey($alias);
+
+        $this->data['hosts'][$key] = $data;
     }//end setHost()
+
+    /**
+     * Get the unique host key, given an alias
+     *
+     * @param string $alias The alias of the host to look for.
+     *
+     * @return mixed string The unique host key or false if none found.
+     */
+    public function getHostKey(string $alias): mixed
+    {
+        $alias_map = $this->getAliasMap();
+        return $alias_map[$alias] ?? false;
+    }//end getHostKey()
+
 
     /**
      * Get hosts by hostname (domain or IP)

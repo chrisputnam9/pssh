@@ -178,39 +178,49 @@ class PSSH_Config
             ksort($this->data['ssh']);
         }
 
-        ksort($this->data['hosts']);
+        if (!empty($this->data['pssh'])) {
+            ksort($this->data['pssh']);
+        }
 
-        $final_map = [];
-
-        foreach ($this->data['hosts'] as $alias => &$host) {
-            $hostname = empty($host['ssh']['hostname']) ? false : $host['ssh']['hostname'];
+        $cleaned_hosts = [];
+        $host_index = 0;
+        foreach ($this->data['hosts'] as $old_key => $host) {
+            // Make sure host is an array as expected
+            if (!is_array($host)) {
+                $this->error("Host data with key '$old_key' is not an array - this is unexpected. Please edit the config file manually to resolve this.");
+            }
+            // Set up default data structure
+            if (empty($host['pssh'])) {
+                $host['pssh'] = [];
+            }
+            if (empty($host['ssh'])) {
+                $host['ssh'] = [];
+            }
 
             // Set up aliases
             if (empty($host['pssh']['alias'])) {
-                $host['pssh']['alias'] = $alias;
+                // Default alias to be same as key if not set
+                $host['pssh']['alias'] = $old_key;
             }
             if (empty($host['pssh']['alias_additional'])) {
+                // Default empty alias_additional just for easy editing
                 $host['pssh']['alias_additional'] = [];
             }
 
-            $pssh_alias = $host['pssh']['alias'];
-            if (!isset($final_map[$pssh_alias])) {
-                $final_map[$pssh_alias] = [];
-            }
-
-            $final_map[$pssh_alias][] = $alias;
-
-            if (!empty($hostname)) {
+            // Standardize hostname as IP address
+            if (!empty($host['ssh']['hostname'])) {
                 $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname'], $host['pssh']);
             }
+
+            // Standardize Key
+            // $new_key = $host['pssh']['alias'] . '_' . $host_index;
+            $cleaned_hosts[$old_key] = $host;
+
+            $host_index++;
         }//end foreach
 
-        foreach ($final_map as $final => $keys) {
-            $c = count($keys);
-            if ($c > 1) {
-                $this->warn("$c hosts using alias '$final' - " . implode(", ", $keys));
-            }
-        }
+        ksort($cleaned_hosts);
+        $this->data['hosts'] = $cleaned_hosts;
     }//end clean()
 
     /**

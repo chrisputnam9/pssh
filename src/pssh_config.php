@@ -317,16 +317,25 @@ class PSSH_Config
         if (is_null($this->alias_map)) {
             $this->alias_map = [];
             foreach ($this->getHosts() as $key => $host) {
-                foreach (array_merge([$host['pssh']['alias']], $host['pssh']['alias_additional']) as $alias) {
+                $aliases = array_merge([$host['pssh']['alias']], $host['pssh']['alias_additional']);
+                if ($key !== $host['pssh']['alias']) {
+                    $aliases[] = $key;
+                }
+                foreach ($aliases as $alias) {
                     if (isset($this->alias_map[$alias])) {
                         $prior_key = $this->alias_map[$alias];
-                        $this->warn("Duplicate alias - both host '$prior_key' and '$key' have the same alias specified. Host '$prior_key' will take precedence.");
+                        $this->warn(
+                            "Duplicate alias - both host '$prior_key' and '$key' have the same alias specified ($alias).\n" .
+                            "Host '$prior_key' will take precedence for now.\n" .
+                            "Edit or delete hosts as needed to resolve this conflict.\n" .
+                            "NOTE: Keys are used as aliases and can conflict with other aliases"
+                        );
                     } else {
                         $this->alias_map[$alias] = $key;
                     }
                 }
             }
-        }
+        }//end if
         return $this->alias_map;
     }//end getAliasMap()
 

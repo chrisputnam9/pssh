@@ -212,14 +212,38 @@ class PSSH_Config
                 $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname'], $host['pssh']);
             }
 
-            // Standardize Key
-            // $new_key = $host['pssh']['alias'] . '_' . $host_index;
-            $cleaned_hosts[$old_key] = $host;
+            // Standardize Key to Align with Alias if possible
+            $new_key = $old_key;
+            $potential_new_key = $host['pssh']['alias'];
+            if ($potential_new_key !== $old_key) {
+                if (empty($this->data['hosts'][$potential_new_key]) && empty($cleaned_hosts[$potential_new_key])) {
+                    $this->warn(
+                        "Changing a host key from '$old_key' to '$potential_new_key' to align with primary alias.\n" .
+                        "If this was not intended, consider adding a new alias via alias_additional instead."
+                    );
+                    $new_key = $potential_new_key;
+                } else {
+                    $this->warn(
+                        "Unable to update host key from '$old_key' to '$potential_new_key' to align with primary alias.\n" .
+                        "Key '$potential_new_key' is already in use by another host.\n" .
+                        "The situation can be resolved by manually editing the configuration file"
+                    );
+                }
+            }
+            $cleaned_hosts[$new_key] = $host;
 
             $host_index++;
         }//end foreach
 
         ksort($cleaned_hosts);
+
+        if (count($this->data['hosts']) !== count($cleaned_hosts)) {
+            $this->error(
+                "Aborting clean - something went wrong and the cleaned host count would differ from the original host count.\n" .
+                "Aborting to avoid losing data - this is indicative of a bug and should be reported."
+            );
+        }
+
         $this->data['hosts'] = $cleaned_hosts;
     }//end clean()
 
@@ -318,17 +342,13 @@ class PSSH_Config
             $this->alias_map = [];
             foreach ($this->getHosts() as $key => $host) {
                 $aliases = array_merge([$host['pssh']['alias']], $host['pssh']['alias_additional']);
-                if ($key !== $host['pssh']['alias']) {
-                    $aliases[] = $key;
-                }
                 foreach ($aliases as $alias) {
                     if (isset($this->alias_map[$alias])) {
                         $prior_key = $this->alias_map[$alias];
                         $this->warn(
                             "Duplicate alias - both host '$prior_key' and '$key' have the same alias specified ($alias).\n" .
                             "Host '$prior_key' will take precedence for now.\n" .
-                            "Edit or delete hosts as needed to resolve this conflict.\n" .
-                            "NOTE: Keys are used as aliases and can conflict with other aliases"
+                            "Edit or delete hosts as needed to resolve this conflict."
                         );
                     } else {
                         $this->alias_map[$alias] = $key;

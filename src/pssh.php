@@ -518,7 +518,7 @@ class PSSH extends Console_Abstract
     /**
      * Edit host - modify config in your editor
      *
-     * @param string $alias Alias of host.
+     * @param string $alias Alias of host to edit.
      * @param array  $paths The JSON config path(s) from which to edit the host.
      *               Defaults to all known config paths.
      *
@@ -534,29 +534,42 @@ class PSSH extends Console_Abstract
         $host_data = false;
         $host_json = false;
 
+        $config_host_map = [];
+        $data = [];
+
         foreach ($paths as $config_path) {
             $config = new PSSH_Config($this);
             $config->readJSON($config_path);
-            $host_data = $config->getHosts($alias);
-            if (!empty($host_data) and !empty($host_data[0])) {
-                $host_data = $host_data[0];
-                $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
-                break;
+            $key = $config->getHostKey($alias);
+            $data = $config->getHosts($key);
+            if ($key) {
+                $config_host_map[$config_path] = [$key, $data];
             }
         }
 
-        if (empty($host_data) or empty($host_json)) {
-            $this->error("Host '$alias' not found in config files or invalid data");
+        if (empty($config_host_map)) {
+            $this->error("Host '$alias' not found in config files");
         }
 
+        // TODO select which config if multiple
+
+        $host_data = $data[0];
+        $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
         $original_json = $host_json;
 
         while (true) {
             $host_hjson = $this->json_encode($host_data);
             $host_hjson = $this->edit($host_hjson, $alias . ".hjson", "modify");
             $host_data = $this->json_decode($host_hjson, ['assoc' => true, 'keepWsc' => false]);
+
+            $warnings = [];
             if (empty($host_data)) {
-                $this->warn("Invalid JSON - check your syntax");
+                $warnings[] = "Invalid JSON - check your syntax";
+            }
+
+            if (!empty($warnings)) {
+                array_map([$this, 'warn'], $warnings);
+                // TODO change to options - select try again or cancel (return false)
                 $continue = $this->confirm("Keep editing?");
                 if (! $continue) {
                     return false;
@@ -564,7 +577,7 @@ class PSSH extends Console_Abstract
             } else {
                 break;
             }
-        }
+        }//end while
 
         // Test for actual changes
         $host_json = json_encode($host_data, JSON_PRETTY_PRINT);

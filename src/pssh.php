@@ -535,23 +535,40 @@ class PSSH extends Console_Abstract
         $host_json = false;
 
         $config_host_map = [];
-        $data = [];
 
+        // Check each file for matching host data
         foreach ($paths as $config_path) {
             $config = new PSSH_Config($this);
             $config->readJSON($config_path);
             $key = $config->getHostKey($alias);
             $data = $config->getHosts($key);
+            $select = "Host with key '$key' in '$config_path'";
             if ($key) {
-                $config_host_map[$config_path] = [$key, $data];
+                $config_host_map[$select] = [$key, $data, $config_path];
             }
         }
 
+        // Error if not found in any file
         if (empty($config_host_map)) {
             $this->error("Host '$alias' not found in config files");
         }
 
-        // TODO select which config if multiple
+        // Select which config if multiple options
+        if (count($config_host_map) > 1) {
+            $config_host_map[static::BACK_OPTION] = static::BACK_OPTION;
+            $this->output("Host with key/alias '$alias' exists in multiple config files.");
+            $selected = $this->select(array_keys($config_host_map), 'Select which to edit');
+            if ($selected === static::BACK_OPTION) {
+                return false;
+            }
+            list($key,$data, $config_path) = $config_host_map[$selected];
+        } else {
+            list($key,$data, $config_path) = $config_host_map[0];
+        }
+
+        // Load up the file we're going to be editing
+        $config = new PSSH_Config($this);
+        $config->readJSON($config_path);
 
         $host_data = $data[0];
         $host_json = json_encode($host_data, JSON_PRETTY_PRINT);
@@ -565,6 +582,14 @@ class PSSH extends Console_Abstract
             $warnings = [];
             if (empty($host_data)) {
                 $warnings[] = "Invalid JSON - check your syntax";
+            }
+
+            // Check for key & alias collisions
+            $aliases = $host_data['pssh']['alias_additional'];
+            $new_key = $host_data['pssh']['alias'];
+            $aliases[]= $new_key;
+            foreach ($aliases as $alias) {
+                // TODO check for collision
             }
 
             if (!empty($warnings)) {
@@ -586,7 +611,7 @@ class PSSH extends Console_Abstract
             return false;
         }
 
-        $config->setHost($alias, $host_data);
+        $config->setHost($new_key, $host_data);
 
         // Backup, clean, save json
         $this->backup($config_path);

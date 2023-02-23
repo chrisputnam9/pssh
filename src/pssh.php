@@ -561,9 +561,9 @@ class PSSH extends Console_Abstract
             if ($selected === static::BACK_OPTION) {
                 return false;
             }
-            list($key,$data, $config_path) = $config_host_map[$selected];
+            list($key, $data, $config_path) = $config_host_map[$selected];
         } else {
-            list($key,$data, $config_path) = $config_host_map[0];
+            list($key, $data, $config_path) = array_pop($config_host_map);
         }
 
         // Load up the file we're going to be editing
@@ -587,19 +587,27 @@ class PSSH extends Console_Abstract
             // Check for key & alias collisions
             $aliases = $host_data['pssh']['alias_additional'];
             $new_key = $host_data['pssh']['alias'];
-            $aliases[]= $new_key;
+            $aliases[] = $new_key;
             foreach ($aliases as $alias) {
-                // TODO check for collision
+                // See if any existing host using this alias - other than the one being edited
+                $colliding_host_key = $config->getHostKey($alias);
+                if ($colliding_host_key && $colliding_host_key !== $key) {
+                    $warnings[] = "Alias '$alias' is already in use by host with key '$colliding_host_key'";
+                }
             }
 
             if (!empty($warnings)) {
-                array_map([$this, 'warn'], $warnings);
-                // TODO change to options - select try again or cancel (return false)
-                $continue = $this->confirm("Keep editing?");
-                if (! $continue) {
+                $cancel = 'Cancel / Abort Editing';
+                $option = $this->select([
+                    'Edit Information / Try Again',
+                    $cancel,
+                ], "ERRORS WITH EDIT:\n - " . join("\n - ", $warnings));
+
+                if ($option === $cancel) {
                     return false;
                 }
             } else {
+                // Move on and save new data
                 break;
             }
         }//end while
@@ -611,17 +619,25 @@ class PSSH extends Console_Abstract
             return false;
         }
 
+        // Delete if changing key
+        if ($new_key !== $key) {
+            $config->deleteHost($key);
+        }
+
+        // Set new data
         $config->setHost($new_key, $host_data);
 
-        // Backup, clean, save json
-        $this->backup($config_path);
+        // Clean up the data
         $config->clean();
 
+        // Backup, then save
+        $this->backup($config_path);
         $config->writeJson($config_path);
 
         // write out ssh config
         $this->export();
 
+        // sync up, if configured
         $this->sync();
 
         $this->hr();

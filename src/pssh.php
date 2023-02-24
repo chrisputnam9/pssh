@@ -844,7 +844,14 @@ ____KEYS____;
                     'reload_function' => function ($reload_data) {
                         $config = new PSSH_Config($this);
                         $config->readJSON($reload_data['paths']);
-                        return $config->search($reload_data['terms']);
+                        $results = $config->search($reload_data['terms']);
+                        foreach ($results as $key => $host) {
+                            $results[$key]['_alias_display'] = array_merge(
+                                [$host['pssh']['alias']],
+                                $host['pssh']['alias_additional']
+                            );
+                        }
+                        return $results;
                     },
                     'reload_data' => [
                         'paths' => $paths,

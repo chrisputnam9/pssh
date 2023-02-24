@@ -348,7 +348,8 @@ class PSSH_Config
                         $this->warn(
                             "Duplicate alias - both host '$prior_key' and '$key' have the same alias specified ($alias).\n" .
                             "Host '$prior_key' will take precedence for now.\n" .
-                            "Edit or delete hosts as needed to resolve this conflict."
+                            "Edit or delete hosts as needed to resolve this conflict.",
+                            "prompt_to_continue"
                         );
                     } else {
                         $this->alias_map[$alias] = $key;

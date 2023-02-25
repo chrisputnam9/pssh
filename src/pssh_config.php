@@ -351,6 +351,7 @@ class PSSH_Config
                             "Edit or delete hosts as needed to resolve this conflict.",
                             "prompt_to_continue"
                         );
+                        die;
                     } else {
                         $this->alias_map[$alias] = $key;
                     }

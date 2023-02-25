@@ -50,6 +50,15 @@ class PSSH extends Console_Abstract
     ];
 
     /**
+     * Default method to run on command launch if none specified
+     *
+     *  - Must be one of the values specified in static $METHODS
+     *
+     * @var string
+     */
+    protected static $DEFAULT_METHOD = "list";
+
+    /**
      * Config options that are hidden from help output
      * - Add config values here that would not typically be overridden by a flag
      * - Cleans up help output and avoids confusion
@@ -355,6 +364,11 @@ class PSSH extends Console_Abstract
             $config->clean();
             $config->writeJSON($path);
         }
+
+        // Do a getAliasMap across all files - primarily just to check for duplicate aliases
+        $config = new PSSH_Config($this);
+        $config->readJSON($paths);
+        $config->getAliasMap();
 
         $this->output('Clean complete');
     }//end clean()
@@ -862,20 +876,21 @@ ____KEYS____;
                             'description' => 'Initialize the focused host',
                             'keys' => 'i',
                             'callback' => function ($list_instance) {
-                                $focused_key = $list_instance->getFocusedKey();
-                                $this->init_host($focused_key);
+                                $host_data = $list_instance->getFocusedValue();
+                                $alias = $host_data['pssh']['alias'];
+                                $this->init_host($alias);
                             },
                         ],
                         'delete_host' => [
                             'description' => 'Delete the focused host',
                             'keys' => 'd',
                             'callback' => function ($list_instance) {
-                                $focused_key = $list_instance->getFocusedKey();
-                                $host_alias = $focused_key;
+                                $host_data = $list_instance->getFocusedValue();
+                                $alias = $host_data['pssh']['alias'];
                                 if (
-                                    $this->confirm("Are you sure you want to delete the config for '$host_alias'?", "n")
+                                    $this->confirm("Are you sure you want to delete the config for '$alias'?", "n")
                                 ) {
-                                    $this->delete_host($host_alias);
+                                    $this->delete_host($alias);
                                 }
                             },
                             'reload' => true,
@@ -884,8 +899,9 @@ ____KEYS____;
                             'description' => 'Edit the focused host',
                             'keys' => 'e',
                             'callback' => function ($list_instance) {
-                                $focused_key = $list_instance->getFocusedKey();
-                                $this->edit_host($focused_key);
+                                $host_data = $list_instance->getFocusedValue();
+                                $alias = $host_data['pssh']['alias'];
+                                $this->edit_host($alias);
                             },
                             'reload' => true,
                         ],

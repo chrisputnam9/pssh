@@ -602,9 +602,50 @@ class PSSH_Config
         if (count($unmerged_data) == 1) {
             $this->data = $unmerged_data[0];
         } elseif (count($unmerged_data) > 1) {
+            // $this->data = $this->mergeConfig($unmerged_data);
             $this->data = call_user_func_array('array_replace_recursive', $unmerged_data);
         }
     }//end readJSON()
+
+    /**
+     * Merge loaded configuration data (from readJSON)
+     *
+     * @param array $unmerged_data Configuration data arrays to be merged.
+     *
+     * @return array Merged configuration data
+     */
+    public function mergeConfig(array $unmerged_data): array
+    {
+        $merged_data = [];
+        foreach ($unmerged_data as $data) {
+            foreach ($data as $key => $config) {
+                if (isset($merged_data[$key])) {
+                    // Merge arrays
+                    if (is_array($merged_data[$key])) {
+                        // Indexed arrays -> merge normally & ensure uniqueness (eg. aliases)
+                        if (isset($merged_data[$key][0])) {
+                            $merged_data[$key] = array_unique(array_merge(
+                                $merged_data[$key],
+                                $data
+                            ));
+                        // Hashed arrays - merge with our method
+                        } else {
+                            $merged_data[$key] = $this->mergeConfig([
+                                $merged_data[$key],
+                                $data
+                            ]);
+                        }
+                    // Replace individual values
+                    } else {
+                        $merged_data[$key] = $data;
+                    }
+                } else {
+                    $merged_data[$key] = $data;
+                }//end if
+            }//end foreach
+        }//end foreach
+        return $merged_data;
+    }//end mergeConfig()
 
     /**
      * Read from SSH config file - load host configurations into this instance.

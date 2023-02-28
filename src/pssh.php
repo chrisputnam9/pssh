@@ -841,11 +841,12 @@ ____KEYS____;
         $results = $config->search($terms);
 
         foreach ($results as $key => $host) {
-            $results[$key]['_alias_display'] = array_merge(
+            $results[$key]['_alias_display'] = array_unique(array_merge(
                 [$host['pssh']['alias']],
                 $host['pssh']['alias_additional']
-            );
+            ));
         }
+        sort($results);
 
         if (empty($results)) {
             $this->output("No results found");
@@ -860,11 +861,12 @@ ____KEYS____;
                         $config->readJSON($reload_data['paths']);
                         $results = $config->search($reload_data['terms']);
                         foreach ($results as $key => $host) {
-                            $results[$key]['_alias_display'] = array_merge(
+                            $results[$key]['_alias_display'] = array_unique(array_merge(
                                 [$host['pssh']['alias']],
                                 $host['pssh']['alias_additional']
-                            );
+                            ));
                         }
+                        sort($results);
                         return $results;
                     },
                     'reload_data' => [

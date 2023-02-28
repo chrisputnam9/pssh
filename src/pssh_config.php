@@ -602,8 +602,7 @@ class PSSH_Config
         if (count($unmerged_data) == 1) {
             $this->data = $unmerged_data[0];
         } elseif (count($unmerged_data) > 1) {
-            // $this->data = $this->mergeConfig($unmerged_data);
-            $this->data = call_user_func_array('array_replace_recursive', $unmerged_data);
+            $this->data = $this->mergeConfig($unmerged_data);
         }
     }//end readJSON()
 
@@ -619,29 +618,27 @@ class PSSH_Config
         $merged_data = [];
         foreach ($unmerged_data as $data) {
             foreach ($data as $key => $config) {
-                if (isset($merged_data[$key])) {
-                    // Merge arrays
-                    if (is_array($merged_data[$key])) {
-                        // Indexed arrays -> merge normally & ensure uniqueness (eg. aliases)
-                        if (isset($merged_data[$key][0])) {
-                            $merged_data[$key] = array_unique(array_merge(
-                                $merged_data[$key],
-                                $data
-                            ));
-                        // Hashed arrays - merge with our method
-                        } else {
-                            $merged_data[$key] = $this->mergeConfig([
-                                $merged_data[$key],
-                                $data
-                            ]);
-                        }
-                    // Replace individual values
+                // Merge colliding arrays
+                if (isset($merged_data[$key]) && is_array($merged_data[$key])) {
+                    // Lists (int-indexed arrays) -> merge normally & ensure uniqueness (eg. aliases)
+                    if (isset($merged_data[$key][0])) {
+                        $merged_data[$key] = array_unique(array_merge(
+                            $merged_data[$key],
+                            $config
+                        ));
+                        continue;
+                    // Hashes - merge recursively
                     } else {
-                        $merged_data[$key] = $data;
+                        $merged_data[$key] = $this->mergeConfig([
+                            $merged_data[$key],
+                            $config
+                        ]);
+                        continue;
                     }
-                } else {
-                    $merged_data[$key] = $data;
                 }//end if
+
+                // Set new data or overwrite non-array values
+                $merged_data[$key] = $config;
             }//end foreach
         }//end foreach
         return $merged_data;
@@ -883,10 +880,6 @@ class PSSH_Config
         fwrite($path_handle, "# ---------------------------------------\n");
         foreach ($alias_map as $alias => $key) {
             $host_config = $host_map[$key];
-            if (empty($host_config['pssh']['alias'])) {
-                $host_config['pssh']['alias'] = $key;
-            }
-
             $host_output = $this->writeSSHHost($alias, $host_config);
             fwrite($path_handle, $host_output);
         }

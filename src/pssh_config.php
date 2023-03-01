@@ -341,7 +341,10 @@ class PSSH_Config
         if (is_null($this->alias_map)) {
             $this->alias_map = [];
             foreach ($this->getHosts() as $key => $host) {
-                $aliases = array_merge([$host['pssh']['alias']], $host['pssh']['alias_additional']);
+                $aliases = array_merge(
+                    [$host['pssh']['alias']],
+                    $host['pssh']['alias_additional']
+                );
                 foreach ($aliases as $alias) {
                     if (isset($this->alias_map[$alias])) {
                         $prior_key = $this->alias_map[$alias];

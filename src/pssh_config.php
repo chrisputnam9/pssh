@@ -343,7 +343,7 @@ class PSSH_Config
             foreach ($this->getHosts() as $key => $host) {
                 $aliases = array_merge(
                     [$host['pssh']['alias']],
-                    $host['pssh']['alias_additional']
+                    $host['pssh']['alias_additional'] ?? []
                 );
                 foreach ($aliases as $alias) {
                     if (isset($this->alias_map[$alias])) {
@@ -354,7 +354,6 @@ class PSSH_Config
                             "Edit or delete hosts as needed to resolve this conflict.",
                             "prompt_to_continue"
                         );
-                        die;
                     } else {
                         $this->alias_map[$alias] = $key;
                     }

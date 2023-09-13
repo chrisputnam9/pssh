@@ -599,7 +599,7 @@ class PSSH extends Console_Abstract
             }
 
             // Check for key & alias collisions
-            $aliases = $host_data['pssh']['alias_additional'];
+            $aliases = $host_data['pssh']['alias_additional'] ?? [];
             $new_key = $host_data['pssh']['alias'];
             $aliases[] = $new_key;
             foreach ($aliases as $alias) {
@@ -843,7 +843,7 @@ ____KEYS____;
         foreach ($results as $key => $host) {
             $results[$key]['_alias_display'] = array_unique(array_merge(
                 [$host['pssh']['alias']],
-                $host['pssh']['alias_additional']
+                $host['pssh']['alias_additional'] ?? []
             ));
         }
         sort($results);
@@ -863,7 +863,7 @@ ____KEYS____;
                         foreach ($results as $key => $host) {
                             $results[$key]['_alias_display'] = array_unique(array_merge(
                                 [$host['pssh']['alias']],
-                                $host['pssh']['alias_additional']
+                                $host['pssh']['alias_additional'] ?? []
                             ));
                         }
                         sort($results);

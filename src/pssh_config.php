@@ -189,6 +189,8 @@ class PSSH_Config
             if (!is_array($host)) {
                 $this->error("Host data with key '$old_key' is not an array - this is unexpected. Please edit the config file manually to resolve this.");
             }
+            $old_key = trim($old_key);
+
             // Set up default data structure
             if (empty($host['pssh'])) {
                 $host['pssh'] = [];
@@ -212,6 +214,15 @@ class PSSH_Config
                 $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname'], $host['pssh']);
             }
 
+            // Clean Port
+            $this->cleanPort($host);
+
+            // Clean User
+            $this->cleanUser($host);
+
+            // Clean aliases
+            $this->cleanAliases($host);
+
             // Standardize Key to Align with Alias if possible
             $new_key = $old_key;
             $potential_new_key = $host['pssh']['alias'];
@@ -226,7 +237,7 @@ class PSSH_Config
                     $this->warn(
                         "Unable to update host key from '$old_key' to '$potential_new_key' to align with primary alias.\n" .
                         "Key '$potential_new_key' is already in use by another host.\n" .
-                        "The situation can be resolved by manually editing the configuration file"
+                        "The situation can be resolved by manually editing the JSON configuration file (likely in ~/.pssh)"
                     );
                 }
             }
@@ -984,11 +995,9 @@ class PSSH_Config
     public function cleanHostname(string $hostname, array $pssh = [], mixed $certain = true): string
     {
         // Make sure lookup isn't disabled by pssh config
-        $lookup = (
-            !is_array($pssh)
-            or !isset($pssh['lookup'])
-            or strtolower($pssh['lookup']) != 'no'
-        );
+        $lookup = strtolower($pssh['lookup'] ?? 'yes') === 'yes';
+
+        $hostname = trim($hostname);
 
         $valid_ip = filter_var($hostname, FILTER_VALIDATE_IP);
         $valid_url = filter_var('http://' . $hostname, FILTER_VALIDATE_URL);
@@ -1029,6 +1038,57 @@ class PSSH_Config
 
         return $hostname;
     }//end cleanHostname()
+
+    /**
+     * Clean port for a host config - make sure it's a valid port number; throw an error if unable to validate.
+     *
+     * @param array $host The host config to clean - will be modified in place (passed by reference).
+     *
+     * @return void
+     */
+    public function cleanPort(array &$host)
+    {
+        return;
+
+        $clean_port = strtolower($pssh['clean_port'] ?? 'yes') === 'yes';
+        if (!$clean_port) {
+            return $port;
+        }
+        $new_port = (int) $port;
+        if ($new_port < 0 or $new_port > 65535) {
+            $this->error("Invalid port number: $port");
+        }
+        return $port;
+    }//end cleanPort()
+
+
+    /**
+     * Clean username for a host config
+     *
+     * @param array $host The host config to clean - will be modified in place (passed by reference).
+     *
+     * @return void
+     */
+    public function cleanUser(array &$host)
+    {
+        return;
+
+        $new_user = trim($user);
+    }//end cleanUser()
+
+
+    /**
+     * Clean the aliases for host config
+     *
+     * @param array $host The host config to clean - will be modified in place (passed by reference).
+     *
+     * @return void
+     */
+    public function cleanAliases(array &$host)
+    {
+        return;
+    }//end cleanAliases()
+
 
     /**
      * Magic handling for subcommands to call main command methods

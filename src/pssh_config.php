@@ -215,13 +215,13 @@ class PSSH_Config
             }
 
             // Clean Port
-            $this->cleanPort($host);
+            $this->cleanPort($host, $old_key);
 
             // Clean User
-            $this->cleanUser($host);
+            $this->cleanUser($host, $old_key);
 
             // Clean aliases
-            $this->cleanAliases($host);
+            $this->cleanAliases($host, $old_key);
 
             // Standardize Key to Align with Alias if possible
             $new_key = $old_key;
@@ -1024,7 +1024,7 @@ class PSSH_Config
                 or !filter_var($info[0]['ip'], FILTER_VALIDATE_IP)
             ) {
                 if ($certain) {
-                    $this->warn("Failed lookup - $hostname.  Set pssh:lookup to 'no' if this is normal for this host.");
+                    $this->warn("Failed lookup - $hostname.  Set pssh[lookup] to 'no' if this is normal for this host.");
                 }
                 return $hostname;
             }
@@ -1042,53 +1042,168 @@ class PSSH_Config
     /**
      * Clean port for a host config - make sure it's a valid port number; throw an error if unable to validate.
      *
-     * @param array $host The host config to clean - will be modified in place (passed by reference).
+     * @param array  $host     The host config to clean - will be modified in place (passed by reference).
+     * @param string $host_key The key for the host config - used for logging.
      *
      * @return void
      */
-    public function cleanPort(array &$host)
+    private function cleanPort(array &$host, string $host_key)
     {
-        return;
+        if (! $this->hostDataIsCleanable($host, 'port')) {
+            return;
+        }
 
-        $clean_port = strtolower($pssh['clean_port'] ?? 'yes') === 'yes';
-        if (!$clean_port) {
-            return $port;
+        // The cleaning
+        $port = $host['ssh']['port'];
+        $clean_port = (int) $port;
+
+        // Default port
+        if (empty($clean_port)) {
+            $clean_port = 22;
         }
-        $new_port = (int) $port;
-        if ($new_port < 0 or $new_port > 65535) {
-            $this->error("Invalid port number: $port");
+
+        if ($clean_port < 1 or $clean_port > 65535) {
+            $this->error("Invalid port number: $port - set pssh[clean_port] to 'no' to disable this check for a given host.");
         }
-        return $port;
+        $clean_port = (string) $clean_port;
+
+        if ($clean_port === $port) {
+            return;
+        }
+
+        $host['ssh']['port'] = $clean_port;
+
+        $port_type = gettype($port);
+        $clean_port_type = gettype($clean_port);
+        $this->warn("Port '$port' ($port_type) is being cleaned to '$clean_port' ($clean_port_type) for host $host_key - set pssh[clean_port] to 'no' to disable this for a given host.");
     }//end cleanPort()
 
 
     /**
      * Clean username for a host config
      *
-     * @param array $host The host config to clean - will be modified in place (passed by reference).
+     * @param array  $host     The host config to clean - will be modified in place (passed by reference).
+     * @param string $host_key The key for the host config - used for logging.
      *
      * @return void
      */
-    public function cleanUser(array &$host)
+    private function cleanUser(array &$host, string $host_key)
     {
-        return;
+        if (! $this->hostDataIsCleanable($host, 'user')) {
+            return;
+        }
 
-        $new_user = trim($user);
+        // The cleaning
+        $user = $host['ssh']['user'];
+        $clean_user = trim($user);
+
+        if ($clean_user === $user) {
+            return;
+        }
+
+        $host['ssh']['user'] = $clean_user;
+
+        $user_type = gettype($user);
+        $clean_user_type = gettype($clean_user);
+        $this->warn("Port '$user' ($user_type) is being cleaned to '$clean_user' ($clean_user_type) for host $host_key - set pssh[clean_user] to 'no' to disable this for a given host.");
     }//end cleanUser()
 
 
     /**
      * Clean the aliases for host config
      *
-     * @param array $host The host config to clean - will be modified in place (passed by reference).
+     * @param array  $host     The host config to clean - will be modified in place (passed by reference).
+     * @param string $host_key The key for the host config - used for logging.
      *
      * @return void
      */
-    public function cleanAliases(array &$host)
+    private function cleanAliases(array &$host, string $host_key)
     {
-        return;
+        // Special case - no need to clean
+        if ($host_key === '*') {
+            return;
+        }
+
+        $host['pssh']['alias'] = $this->_cleanAliases([$host['pssh']['alias']], 'alias', $host, $host_key)[0];
+        $host['pssh']['alias_additional'] = $this->_cleanAliases($host['pssh']['alias_additional'], 'alias_additional', $host, $host_key);
     }//end cleanAliases()
 
+
+    /**
+     * Clean a set of aliases - used by cleanAliases()
+     *
+     * @param array  $aliases     The aliases to clean.
+     * @param string $aliases_key The key for the aliases - to check config.
+     * @param array  $host        The host config to clean - will be modified in place (passed by reference).
+     * @param string $host_key    The key for the host config - used for logging.
+     *
+     * @return array The cleaned aliases.
+     */
+    private function _cleanAliases(array $aliases, string $aliases_key, array &$host, string $host_key)
+    {
+        if (! $this->hostDataIsCleanable($host, $aliases_key)) {
+            return $aliases;
+        }
+
+        $clean_aliases = [];
+        foreach ($aliases as $alias) {
+            $clean_aliases[] = $this->_cleanAlias($alias, $host_key, $aliases_key);
+        }
+
+        return $clean_aliases;
+    }//end _cleanAliases()
+
+    /**
+     * Clean a particular alias - used by _cleanAliases
+     *
+     * @param string $alias       The alias to clean.
+     * @param string $host_key    The key for the host config - used for logging.
+     * @param string $aliases_key The key for the aliases - used for logging.
+     *
+     * @return string The clean aliase.
+     */
+    private function _cleanAlias(string $alias, string $host_key, string $aliases_key): string
+    {
+        $clean_alias = preg_replace('/[^.a-zA-Z0-9_-]+/', '_', $alias);
+
+        if ($clean_alias !== $alias) {
+            $alias_type = gettype($alias);
+            $clean_alias_type = gettype($clean_alias);
+            $this->warn("Alias '$alias' ($alias_type) is being cleaned to '$clean_alias' ($clean_alias_type) for host $host_key - set pssh[clean_$aliases_key] to 'no' to disable this for a given host.");
+        }
+
+        return $clean_alias;
+    }//end _cleanAlias()
+
+    /**
+     * Determine if a given value on a host is cleanable
+     *
+     * @param array  $host The host config to check.
+     * @param string $key  The ssh data key to be checked.
+     *
+     * @return boolean Whether the value is cleanable. False if it doesn't exist or config is set to not clean it.
+     */
+    private function hostDataIsCleanable(array $host, string $key): bool
+    {
+        // Can't clean what doesn't exist:
+        if (strpos($key, 'alias') === 0) {
+            if (empty($host['pssh']) || empty($host['pssh'][$key])) {
+                return false;
+            }
+        } else {
+            if (empty($host['ssh']) || empty($host['ssh'][$key])) {
+                return false;
+            }
+        }
+
+        // Config set NOT to clean
+        if (! empty($host['pssh']) && strtolower($host['pssh']['clean_user'] ?? 'yes') === 'no') {
+            return false;
+        }
+
+        // Clean it up!
+        return true;
+    }//end hostDataIsCleanable()
 
     /**
      * Magic handling for subcommands to call main command methods

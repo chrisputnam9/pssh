@@ -33,7 +33,7 @@ Quick getting started information for the most common use case.
         pssh version
 
 ## Import Existing Config
-1. Add git URL for your company's shared SSH config into ~/.pssh/config.json (sync:), then run:
+1. Add git URL for your company's shared SSH config into ~/.pssh/config.hjson (sync:), then run:
 
         pssh sync
 
@@ -129,7 +129,14 @@ If an update is available, you can run the following to install the update:
     =======================================================================================================================================================
 
 # Troubleshooting & Common Issues
-[General PCon issues which may apply](https://github.com/chrisputnam9/pcon#troubleshooting--common-issues)
+
+## See General PCon Issues
+[See general PCon issues which may apply](https://github.com/chrisputnam9/pcon#troubleshooting--common-issues)
+
+## Error about /root/.ssh/config
+During install, in some cases, ~/.pssh/config.hjson could have root's ssh config path set instead of yours.
+
+Edit your ~/.pssh/config.hjson - search for 'root' and fix any incorrect paths to point to your actual files (typically /home/youruser/... eg. /home/youruser/.ssh/config).
 
 # Miscellaneous
 Many thanks to all who've helped with suggestions, testing, and motivation!

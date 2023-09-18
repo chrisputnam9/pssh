@@ -4,21 +4,20 @@ This tool aids in managing your SSH configuration file (~/.ssh/config)
 Primary features include:
  - Ability to sync and share SSH configuration among multiple users
  - Abiliity to merge multiple configurations - ie. personal and work
- - Interface to search, edit, delete, and create new host configurations
+ - Interface to manage configurations - ie. search, edit, delete, and create new host configurations
  - Ability to initialize hosts - copy individual/team keys and optionally run a custom script install
+
+# Latest Version
+
+## Download Latest Version (2.5.0):
+https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
+
+## Latest Version Hash (md5):
+42fa117fb685548c16f87d4117509b04
 
 # Getting Started
 
 Quick getting started information for the most common use case.
-
-## Latest Version
-See notes to follow below in case you are upgrading from a much earlier version.
-
-### Download Latest Version (2.5.0):
-https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
-
-### Latest Version Hash (md5):
-42fa117fb685548c16f87d4117509b04
 
 ## Install PSSH
 1. Make sure you have PHP, or [install it if not](http://php.net/manual/en/install.php)
@@ -34,16 +33,16 @@ https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
         pssh version
 
 ## Import Existing Config
-1. Import your current config to a new JSON file (~/.pssh/ssh\_config\_imported.json)
-
-        pssh import
-
-2. Add git URL for your company's shared SSH config into ~/.pssh/config.json (sync:), then run:
+1. Add git URL for your company's shared SSH config into ~/.pssh/config.json (sync:), then run:
 
         pssh sync
 
+2. Import your current config to a new JSON file (~/.pssh/ssh\_config\_imported.json)
+
+        pssh import
+
 3. Merge your imported json into your synced work json file, putting overrides into a personal file
-   (this is automatically ignored by the default .gitignore, so you'll need to sync/back this up yourself as needed)
+   ('ssh_config_personal.json' is automatically ignored by the default .gitignore, so you'll need to sync/back this up yourself as needed)
 
         pssh merge ~/.pssh/ssh_config_imported.json ~/.pssh/ssh_config_work.json ~/.pssh/ssh_config_personal.json
 
@@ -65,26 +64,12 @@ https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
         pssh sync
 
 # Updating
-The script will periodically check for updates autmoatically and inform you when an update is
+The script will periodically check for updates automatically and inform you when an update is
 available.
 
 If an update is available, you can run the following to install the update:
 
     sudo pssh update
-
-# Upgrading from 1.0 and before
-Your config file may need some updates.  It's recommended that you edit your config file
-(~/.pssh/config.json) and delete all lines with empty values before updating.
-
-To update, if you are not on a self-updating version of the script, you will want to first remove
-the previous version of the script.  Find it with:
-
-    which pssh
-
-Then remove it from your bin path, or remove your alias - depending on how it was set up.
-
-Now, run the install following the steps above.  All configuration will transfer, and the script
-will now automatically check for updates!
 
 # USAGE:
 

@@ -13,7 +13,7 @@ Primary features include:
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
 ## Latest Version Hash (md5):
-42fa117fb685548c16f87d4117509b04
+9488eb0d9bc4b8cfe99f3ef5f9a7412f
 
 # Getting Started
 
@@ -139,7 +139,7 @@ During install, in some cases, ~/.pssh/config.hjson could have root's ssh config
 Edit your ~/.pssh/config.hjson - search for 'root' and fix any incorrect paths to point to your actual files (typically /home/youruser/... eg. /home/youruser/.ssh/config).
 
 # Miscellaneous
-Many thanks to all who've helped with suggestions, testing, and motivation!
+Many thanks to all who've helped with suggestions, testing, issue reporting, and motivation!
 
 - [Theodore Slechta](https://github.com/theodoreslechta)
 - Mark Johnson

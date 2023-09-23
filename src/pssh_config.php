@@ -74,6 +74,13 @@ class PSSH_Config
     protected $hosts_by_hostname = null;
 
     /**
+     * Whether the configuration data is in a state where it's OK to be exported.
+     *
+     * @var boolean
+     */
+    protected $is_exportable = null;
+
+    /**
      * Constructor - sets $main_tool property
      *
      * @param Console_Abstract $main_tool Instance of PHP Console tool class to which to forward method calls via __call.
@@ -172,6 +179,10 @@ class PSSH_Config
      */
     public function clean()
     {
+        // Assume at the start of cleaning that config is exportable
+        // - will be set to false if any issues are found
+        $this->is_exportable = true;
+
         $init = $this->initData();
 
         if (!empty($this->data['ssh'])) {
@@ -187,7 +198,8 @@ class PSSH_Config
         foreach ($this->data['hosts'] as $old_key => $host) {
             // Make sure host is an array as expected
             if (!is_array($host)) {
-                $this->error("Host data with key '$old_key' is not an array - this is unexpected. Please edit the config file manually to resolve this.");
+                $this->is_exportable = false;
+                $this->error("Host data with key '$old_key' is not an array - this is unexpected. Please edit the JSON configuration files (in ~/.pssh) manually to resolve this.");
             }
             $old_key = trim($old_key);
 
@@ -209,18 +221,9 @@ class PSSH_Config
                 $host['pssh']['alias_additional'] = [];
             }
 
-            // Standardize hostname as IP address
-            if (!empty($host['ssh']['hostname'])) {
-                $host['ssh']['hostname'] = $this->cleanHostname($host['ssh']['hostname'], $host['pssh']);
-            }
-
-            // Clean Port
+            $this->cleanHostname($host, $old_key);
             $this->cleanPort($host, $old_key);
-
-            // Clean User
             $this->cleanUser($host, $old_key);
-
-            // Clean aliases
             $this->cleanAliases($host, $old_key);
 
             // Standardize Key to Align with Alias if possible
@@ -234,10 +237,11 @@ class PSSH_Config
                     );
                     $new_key = $potential_new_key;
                 } else {
+                    $this->is_exportable = false;
                     $this->warn(
                         "Unable to update host key from '$old_key' to '$potential_new_key' to align with primary alias.\n" .
                         "Key '$potential_new_key' is already in use by another host.\n" .
-                        "The situation can be resolved by manually editing the JSON configuration file (likely in ~/.pssh)"
+                        "The situation can be resolved by manually editing the JSON configuration files (in ~/.pssh)"
                     );
                 }
             }
@@ -249,13 +253,18 @@ class PSSH_Config
         ksort($cleaned_hosts);
 
         if (count($this->data['hosts']) !== count($cleaned_hosts)) {
+            $this->is_exportable = false;
             $this->error(
                 "Aborting clean - something went wrong and the cleaned host count would differ from the original host count.\n" .
-                "Aborting to avoid losing data - this is indicative of a bug and should be reported."
+                "Aborting to avoid losing data - this is very likely indicative of a bug and should be reported.\n" .
+                "Review JSON configuration files (in ~/.pssh) manually to isolate a potential cause."
             );
         }
 
         $this->data['hosts'] = $cleaned_hosts;
+
+        // Refresh Alias Map
+        $this->getAliasMap('fresh');
     }//end clean()
 
     /**
@@ -345,10 +354,16 @@ class PSSH_Config
     /**
      * Get a map of aliases to host keys
      *
+     * @param boolean $fresh If true, will re-fetch the alias map instead of using cached version.
+     *
      * @return array Array map with all configured aliases as keys and host config keys as values.
      */
-    public function getAliasMap()
+    public function getAliasMap(bool $fresh = false): array
     {
+        if ($fresh) {
+            $this->alias_map = null;
+        }
+
         if (is_null($this->alias_map)) {
             $this->alias_map = [];
             foreach ($this->getHosts() as $key => $host) {
@@ -359,11 +374,11 @@ class PSSH_Config
                 foreach ($aliases as $alias) {
                     if (isset($this->alias_map[$alias])) {
                         $prior_key = $this->alias_map[$alias];
+                        $this->is_exportable = false;
                         $this->warn(
                             "Duplicate alias - both host '$prior_key' and '$key' have the same alias specified ($alias).\n" .
                             "Host '$prior_key' will take precedence for now.\n" .
-                            "Edit or delete hosts as needed to resolve this conflict.",
-                            "prompt_to_continue"
+                            "Edit or delete hosts as needed to resolve this conflict."
                         );
                     } else {
                         $this->alias_map[$alias] = $key;
@@ -579,6 +594,8 @@ class PSSH_Config
      *
      * @param mixed $paths Path(s) to JSON files from which to load configuration.
      *
+     * @throws Exception If there is an error reading the JSON file.
+     *
      * @return void
      */
     public function readJSON(mixed $paths)
@@ -603,14 +620,22 @@ class PSSH_Config
             $json = file_get_contents($path);
 
             $this->log("Decoding data from $path...");
-            $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
+            try {
+                $decoded = $this->json_decode($json, ['assoc' => true, 'keepWsc' => false]);
+            } catch (Exception $e) {
+                throw new Exception(
+                    "Error while trying to read from $path:\n" . $e->getMessage()
+                );
+            }
+
             // $decoded = json_decode($json, true);
             if (empty($decoded)) {
-                $this->error("Likely Syntax Error: $path");
+                $this->is_exportable = false;
+                $this->error("Unexpected empty data read from: $path");
             }
 
             $unmerged_data[] = $decoded;
-        }
+        }//end foreach
 
         if (count($unmerged_data) == 1) {
             $this->data = $unmerged_data[0];
@@ -728,7 +753,8 @@ class PSSH_Config
             sort($original_keys);
             $this->warn(
                 'Unknown Config Key(s) Present' .
-                ' - if these are valid, the PSSH code should be updated to know about them.'
+                ' - if these are valid, the PSSH code should be updated to know about them.' .
+                "\nThe following keys were not recognized:\n"
             );
             $this->output($original_keys);
         }
@@ -759,7 +785,9 @@ class PSSH_Config
         $terms = array_map('trim', $terms);
         $ips = [];
         foreach ($terms as $term) {
-            $ip = $this->cleanHostname($term, [], false);
+            $host = ['ssh' => ['hostname' => $hostname]];
+            $this->cleanHostname($host, '[SEARCH]', 'uncertain');
+            $ip = $host['ssh']['hostname'];
 
             if ($ip != $term) {
                 $ips[] = $ip;
@@ -862,8 +890,17 @@ class PSSH_Config
      */
     public function writeSSH(string $path)
     {
-        $host_map = $this->getHosts();
+        $this->clean();
         $alias_map = $this->getAliasMap();
+
+        if (! $this->isExportable()) {
+            $this->error(
+                "Export aborted to prevent issues with SSH config.\n" .
+                "Review errors and warnings (review again if needed with `pssh clean`) and then try again."
+            );
+        }
+
+        $host_map = $this->getHosts();
 
         $path_handle = fopen($path, 'w');
 
@@ -902,6 +939,23 @@ class PSSH_Config
 
         fclose($path_handle);
     }//end writeSSH()
+
+    /**
+     * Test if the configuration is exportable and show a warning if not.
+     *
+     * @return boolean Wheter configuration data is exportable.
+     */
+    public function isExportable(): bool
+    {
+        if (is_null($this->is_exportable)) {
+            $this->error("Implementation error - run clean(), to evaluate exportability before running isExportable()");
+        }
+
+        if (! $this->is_exportable) {
+            $this->warn("This configuration is not in a valid exportable state. See prior output for details.");
+        }
+        return (bool) $this->is_exportable;
+    }//end isExportable()
 
     /**
      * Convert the specified host data to SSH config format
@@ -984,25 +1038,32 @@ class PSSH_Config
     /**
      * Clean a hostname - attempt to standardize as IP Address, looking up via DNS if needed.
      *
-     * @param string $hostname The hsotname - domain or IP to verify and clean.
-     * @param array  $pssh     The host configuration to check for settings.
-     * @param mixed  $certain  Whether we're certain the hostname is intended to be a hostname.
-     *               - If certain, we'll warn if we can't look it up.
-     *               - If not certain, we'll validate it as a URL before looking up.
+     * @param array  $host      The host config to clean - will be modified in place (passed by reference).
+     * @param string $host_key  The key for the host config - used for logging.
+     * @param mixed  $uncertain Whether we're uncertain the hostname is intended to be a hostname (as opposed to a generic search term).
+     *              - If certain, we'll warn if we can't look it up.
+     *              - If uncertain, we'll validate it as a URL before looking up.
      *
-     * @return string The hostname, cleaned as best we can - converted to an IP address ideally.
+     * @return void
      */
-    public function cleanHostname(string $hostname, array $pssh = [], mixed $certain = true): string
+    public function cleanHostname(array &$host, string $host_key = '[UNKNOWN]', mixed $uncertain = false)
     {
+        if (! $this->hostDataIsCleanable($host, 'port')) {
+            return;
+        }
+
         // Make sure lookup isn't disabled by pssh config
+        $pssh = $host['pssh'] ?? [];
         $lookup = strtolower($pssh['lookup'] ?? 'yes') === 'yes';
 
-        $hostname = trim($hostname);
+        $hostname = trim($host['ssh']['hostname']);
+
+        $certain = ! $uncertain;
 
         $valid_ip = filter_var($hostname, FILTER_VALIDATE_IP);
         $valid_url = filter_var('http://' . $hostname, FILTER_VALIDATE_URL);
 
-        // Canonicalize to IP Address
+        // Try and canonicalize to IP Address
         if (
             // Not empty
             !empty($hostname)
@@ -1015,7 +1076,7 @@ class PSSH_Config
 
             // Either we're certain it's a hostname
             // or it looks like a URL
-            and ($certain or $valid_url)
+            and (! $certain or $valid_url)
         ) {
             $info = @dns_get_record($hostname, DNS_A);
             if (
@@ -1024,19 +1085,24 @@ class PSSH_Config
                 or !filter_var($info[0]['ip'], FILTER_VALIDATE_IP)
             ) {
                 if ($certain) {
-                    $this->warn("Failed lookup - $hostname.  Set pssh[lookup] to 'no' if this is normal for this host.");
+                    $this->is_exportable = false;
+                    $this->warn("Failed lookup - $hostname for host $host_key.  Set pssh[lookup] to 'no' if this is normal for this host.");
                 }
-                return $hostname;
-            }
+            } else {
+                $ip = $info[0]['ip'];
 
-            $ip = $info[0]['ip'];
-
-            if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                $hostname = $ip;
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    $hostname = $ip;
+                }
             }
+        }//end if
+
+        if (empty($hostname)) {
+            $this->is_exportable = false;
+            $this->warn("Empty hostname for host $host_key. This will not do. Set it to a valid hostname.");
         }
 
-        return $hostname;
+        $host['ssh']['hostname'] = $hostname;
     }//end cleanHostname()
 
     /**
@@ -1063,7 +1129,8 @@ class PSSH_Config
         }
 
         if ($clean_port < 1 or $clean_port > 65535) {
-            $this->error("Invalid port number: $port - set pssh[clean_port] to 'no' to disable this check for a given host.");
+            $this->is_exportable = false;
+            $this->warn("Invalid port number: $port for host $host_key - set pssh[clean_port] to 'no' to disable this check for a given host.");
         }
         $clean_port = (string) $clean_port;
 
@@ -1096,6 +1163,11 @@ class PSSH_Config
         // The cleaning
         $user = $host['ssh']['user'];
         $clean_user = trim($user);
+
+        if (empty($clean_user)) {
+            $this->is_exportable = false;
+            $this->warn("Empty user value for host $host_key. This will not do. Set it to a valid user or remove the user key.");
+        }
 
         if ($clean_user === $user) {
             return;
@@ -1164,7 +1236,12 @@ class PSSH_Config
      */
     private function _cleanAlias(string $alias, string $host_key, string $aliases_key): string
     {
-        $clean_alias = preg_replace('/[^.a-zA-Z0-9_-]+/', '_', $alias);
+        $clean_alias = preg_replace('/[^.a-zA-Z0-9_-]+/', '_', trim($alias));
+
+        if (empty($clean_alias)) {
+            $this->is_exportable = false;
+            $this->warn("Empty alias value for host $host_key. This will not do. Set it to a valid alias or remove the empty alias entry.");
+        }
 
         if ($clean_alias !== $alias) {
             $alias_type = gettype($alias);
@@ -1187,11 +1264,11 @@ class PSSH_Config
     {
         // Can't clean what doesn't exist:
         if (strpos($key, 'alias') === 0) {
-            if (empty($host['pssh']) || empty($host['pssh'][$key])) {
+            if (empty($host['pssh']) || !isset($host['pssh'][$key])) {
                 return false;
             }
         } else {
-            if (empty($host['ssh']) || empty($host['ssh'][$key])) {
+            if (empty($host['ssh']) || !isset($host['ssh'][$key])) {
                 return false;
             }
         }

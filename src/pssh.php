@@ -20,7 +20,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.5.0";
+    public const VERSION = "2.5.1";
 
     /**
      * Tool shortname - used as name of configurationd directory.
@@ -241,7 +241,10 @@ class PSSH extends Console_Abstract
         } else {
             $this->output("HostName (URL/IP): $hostname");
         }
-        $clean_hostname = $config->cleanHostname($hostname);
+        $host = ['ssh' => ['hostname' => $hostname]];
+        $config->cleanHostname($host, '[NEW HOST]');
+        $clean_hostname = $host['ssh']['hostname'];
+
         if ($clean_hostname != $hostname) {
             $hostname = $clean_hostname;
             $this->output(" ($hostname)");
@@ -345,9 +348,9 @@ class PSSH extends Console_Abstract
      * @param array $paths The configuration paths to clean up.
      *                     Defaults to all known config paths.
      *
-     * @return void
+     * @return boolean Whether all configuration files are in exportable state.
      */
-    public function clean(array $paths = null)
+    public function clean(array $paths = null): bool
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
@@ -357,20 +360,33 @@ class PSSH extends Console_Abstract
         $this->log("Backing up...");
         $this->backup($paths);
 
+        $exportable = true;
         foreach ($paths as $path) {
             $this->log("Cleaning '$path'");
             $config = new PSSH_Config($this);
             $config->readJSON($path);
             $config->clean();
+            $exportable = $exportable && $config->isExportable();
             $config->writeJSON($path);
         }
 
-        // Do a getAliasMap across all files - primarily just to check for duplicate aliases
+        // Return early if not exportable at this point
+        // - no need for further warnings, will catch them next time
+        if (!$exportable) {
+            return false;
+        }
+
+        // Do a final clean & getAliasMap across all files
+        // - primarily just to check for duplicate aliases
         $config = new PSSH_Config($this);
         $config->readJSON($paths);
+        $config->clean();
         $config->getAliasMap();
+        $exportable = $exportable && $config->isExportable();
 
         $this->output('Clean complete');
+
+        return $exportable;
     }//end clean()
 
     /**
@@ -401,11 +417,20 @@ class PSSH extends Console_Abstract
         $target = $this->prepArg($target, $this->ssh_config_path);
         $sources = $this->prepArg($sources, $this->json_config_paths);
 
+        // Run an initial clean & write JSON for each source
+        $exportable = $this->clean($sources);
+        if (! $exportable) {
+            $this->error(
+                "Export aborted to prevent issues with SSH config.\n" .
+                "Review errors and warnings (review again if needed with `pssh clean`) and then try again."
+            );
+        }
+
+        // Backup target SSH config
         $this->backup($target);
 
         $config = new PSSH_Config($this);
         $config->readJSON($sources);
-        $config->clean();
         $config->writeSSH($target);
 
         $this->output('Export complete');

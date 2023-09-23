@@ -785,7 +785,7 @@ class PSSH_Config
         $terms = array_map('trim', $terms);
         $ips = [];
         foreach ($terms as $term) {
-            $host = ['ssh' => ['hostname' => $hostname]];
+            $host = ['ssh' => ['hostname' => $term]];
             $this->cleanHostname($host, '[SEARCH]', 'uncertain');
             $ip = $host['ssh']['hostname'];
 

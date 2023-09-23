@@ -13,7 +13,7 @@ Primary features include:
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
 ## Latest Version Hash (md5):
-ad276252ebcd2c1e65001737b2eda75a
+005bd044b5a5c6913db01c98a3e13731
 
 # Getting Started
 

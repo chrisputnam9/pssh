@@ -20,7 +20,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.5.1";
+    public const VERSION = "2.5.2";
 
     /**
      * Tool shortname - used as name of configurationd directory.

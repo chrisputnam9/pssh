@@ -20,7 +20,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.5.2";
+    public const VERSION = "2.5.3";
 
     /**
      * Tool shortname - used as name of configurationd directory.
@@ -717,7 +717,7 @@ class PSSH extends Console_Abstract
      *
      * @return void
      */
-    public function init_host(string $alias, mixed $copy_key = null, mixed $copy_team_keys = null, string $team_config = null, bool $cli = null)
+    public function init_host(string $alias, $copy_key = null, $copy_team_keys = null, string $team_config = null, bool $cli = null)
     {
 
         // Copy Key?
@@ -853,7 +853,7 @@ ____KEYS____;
      *
      * @return void
      */
-    public function search(string $terms, mixed $paths = null)
+    public function search(string $terms, $paths = null)
     {
         $paths = $this->prepArg($paths, $this->json_config_paths);
 
@@ -959,7 +959,7 @@ ____KEYS____;
      *
      * @return void
      */
-    public function list(mixed $paths = null)
+    public function list($paths = null)
     {
         $this->search("", $paths);
     }//end list()

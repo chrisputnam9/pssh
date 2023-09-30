@@ -295,7 +295,7 @@ class PSSH_Config
      *                      ],
      *                  ]
      */
-    public function find(mixed $search): array
+    public function find($search): array
     {
         // The info to search by
         $alias = null;
@@ -451,7 +451,7 @@ class PSSH_Config
      *
      * @return mixed string The unique host key or false if none found.
      */
-    public function getHostKey(string $alias): mixed
+    public function getHostKey(string $alias)
     {
         $alias_map = $this->getAliasMap();
         return $alias_map[$alias] ?? false;
@@ -598,7 +598,7 @@ class PSSH_Config
      *
      * @return void
      */
-    public function readJSON(mixed $paths)
+    public function readJSON($paths)
     {
         $init = $this->initData();
 
@@ -1046,7 +1046,7 @@ class PSSH_Config
      *
      * @return void
      */
-    public function cleanHostname(array &$host, string $host_key = '[UNKNOWN]', mixed $uncertain = false)
+    public function cleanHostname(array &$host, string $host_key = '[UNKNOWN]', $uncertain = false)
     {
         if (! $this->hostDataIsCleanable($host, 'port')) {
             return;
@@ -1295,7 +1295,7 @@ class PSSH_Config
      * @throws Exception If the method can't be found on the "main_tool" instance.
      * @return mixed If able to call the method on the "main_tool" (instance of Console_Abstract) then, return the value from calling that method.
      */
-    public function __call(string $method, array $arguments): mixed
+    public function __call(string $method, array $arguments)
     {
         $callable = [$this->main_tool, $method];
         if (is_callable($callable)) {

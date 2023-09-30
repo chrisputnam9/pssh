@@ -9,11 +9,11 @@ Primary features include:
 
 # Latest Version
 
-## Download Latest Version (2.5.2):
+## Download Latest Version (2.5.3):
 https://raw.githubusercontent.com/chrisputnam9/pssh/master/dist/pssh
 
 ## Latest Version Hash (md5):
-861f75b637634489a50ecf92de7eec3a
+1a1cb3b8966575e1478c6e8370f76b85
 
 # Getting Started
 

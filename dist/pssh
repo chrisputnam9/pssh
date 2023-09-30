@@ -6168,7 +6168,7 @@ if (! class_exists("Console_Abstract")) {
                 $livefilter = $this->livefilter;
             }
             if ($livefilter !== "disabled" && $livefilter !== false) {
-                return $this->liveSelect($list, $message, $default, $q_to_quit, $preselects);
+                return $this->liveSelect($list, $message, $default, $q_to_quit, $preselects, $livefilter);
             }//end if
 
             /*
@@ -6254,10 +6254,11 @@ if (! class_exists("Console_Abstract")) {
          * @param array   $preselects Pre-selected values - eg. could have been passed in as arguments to CLI.
          *                            Passed by reference so they can be passed through a chain of selections and/or narrowed-down lists.
          *                            Defaults to empty array - no preselections.
+         * @param mixed   $livefilter Livefilter behavior.
          *
          * @return string The value of the item in the list that was selected.
          */
-        public function liveSelect(array $list, $message = false, int $default = 0, bool $q_to_quit = true, array &$preselects = []): string
+        public function liveSelect(array $list, $message = false, int $default = 0, bool $q_to_quit = true, array &$preselects = [], $livefilter = "enabled"): string
         {
             $preselected = false;
             $entry = "";
@@ -9226,7 +9227,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.5.3";
+    public const VERSION = "2.5.4";
 
     /**
      * Tool shortname - used as name of configurationd directory.

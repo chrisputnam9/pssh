@@ -43,16 +43,16 @@ function full_test {
     echo "Testing with PSSH bin: $pssh_bin_type_to_test_with"
 
     pced "Testing version output"
-    "$pssh_bin_to_test_with" version
+    $pssh_bin_to_test_with version
 
     pced "Testing help output"
-    "$pssh_bin_to_test_with" help
+    $pssh_bin_to_test_with help
 
     pced "Testing help output for add"
-    "$pssh_bin_to_test_with" help add
+    $pssh_bin_to_test_with help add
 
     pced "Testing search"
-    "$pssh_bin_to_test_with" search cmp
+    $pssh_bin_to_test_with search cmp
 }
 
 if [ -n "$php_version_to_test_with" ]; then

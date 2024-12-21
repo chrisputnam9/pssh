@@ -58,10 +58,10 @@ function full_test {
 if [ -n "$php_version_to_test_with" ]; then
     full_test "$php_version_to_test_with"
 else
+    full_test "8.3"
     full_test "8.2"
     full_test "8.1"
     full_test "8.0"
-    full_test "7.4"
 fi
 
 # Reset to latest PHP version

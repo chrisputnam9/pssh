@@ -4686,7 +4686,7 @@ if (! class_exists("Console_Abstract")) {
          *
          * @var string
          */
-        protected $editor_exec = '/usr/bin/vim -c "startinsert" "%s" > `tty`';
+        protected $editor_exec = '/usr/bin/vim -c "startinsert" %s > `tty`';
 
         /**
          * Help info for $editor_modify_exec
@@ -4706,7 +4706,7 @@ if (! class_exists("Console_Abstract")) {
          *
          * @var string
          */
-        protected $editor_modify_exec = '/usr/bin/vim "%s" > `tty`';
+        protected $editor_modify_exec = '/usr/bin/vim %s > `tty`';
 
         /**
          * Help info for $install_path
@@ -4815,7 +4815,7 @@ if (! class_exists("Console_Abstract")) {
          * @var string
          * @api
          */
-        public $timezone = "US/Eastern";
+        public $timezone = "America/New_York";
 
         /**
          * Help info for $update_auto
@@ -5042,7 +5042,7 @@ if (! class_exists("Console_Abstract")) {
          *
          * @var integer
          */
-        protected $minimum_php_version = "7.4";
+        protected $minimum_php_version = "8.0";
 
         /**
          * The minimum PHP major version supported by the "livefilter" feature
@@ -9271,7 +9271,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.5.5";
+    public const VERSION = "2.6.0";
 
     /**
      * Tool shortname - used as name of configurationd directory.

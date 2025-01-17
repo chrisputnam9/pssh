@@ -20,7 +20,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.6.0";
+    public const VERSION = "2.7.0";
 
     /**
      * Tool shortname - used as name of configurationd directory.
@@ -70,6 +70,19 @@ class PSSH extends Console_Abstract
         'json_import_path',
         'ssh_config_path',
         'sync',
+    ];
+
+    /**
+     * Path config options
+     *
+     * - These will be treated as filepaths for processing
+     * - This enables paths that reference '~' as the user's home folder
+     */
+    protected static $PATH_CONFIG_OPTIONS = [
+        'cli_script',
+        'json_config_paths',
+        'json_import_path',
+        'ssh_config_path',
     ];
 
     /**

@@ -695,8 +695,12 @@ if (!class_exists("Command")) {
             while ($class and class_exists($class)) {
                 if (isset($class::$$property)) {
                     $merged_array = array_merge($merged_array, $class::$$property);
-                    $class = get_parent_class($class);
                 }
+                $parent_class = get_parent_class($class);
+                if ($parent_class === $class) {
+                    break;
+                }
+                $class = $parent_class;
             }
 
             // If integer keys, then make sure array values are uniuqe
@@ -4577,6 +4581,18 @@ if (! class_exists("Console_Abstract")) {
         ];
 
         /**
+         * Path config options
+         *
+         * - These will be treated as filepaths for processing
+         * - This enables paths that reference '~' as the user's home folder
+         */
+        protected static $PATH_CONFIG_OPTIONS = [
+            'backup_dir',
+            'console_abstract_path',
+            'install_path',
+        ];
+
+        /**
          * Help info for $allow_root
          *
          * @var mixed
@@ -6675,6 +6691,43 @@ if (! class_exists("Console_Abstract")) {
         }//end getConfigFile()
 
         /**
+         * Shorten 1 or more paths, using "~" to indicate user's home directory when present.
+         *
+         * @return mixed Shortened path(s) using "~" if applicable.
+         */
+        public function shortenPath(mixed $path_argument): mixed
+        {
+            $is_array = is_array($path_argument);
+            $paths = $is_array ? $path_argument : [$path_argument];
+            $home = $this->getHomeDir();
+            foreach ($paths as $i => $path) {
+                if (strpos($path, $home) === 0) {
+                    $paths[$i] = substr_replace($path, '~', 0, strlen($home));
+                }
+            }
+            return $is_array ? $paths : $paths[0];
+        }
+
+        /**
+         * Interpret 1 or more paths, allowing for "~" to indicate the 
+         * current user's home directory
+         *
+         * @return mixed Full paths with interpretation as needed
+         */
+        public function interpretPath(mixed $path_argument): mixed
+        {
+            $is_array = is_array($path_argument);
+            $paths = $is_array ? $path_argument : [$path_argument];
+            $home = $this->getHomeDir();
+            foreach ($paths as $i => $path) {
+                if (substr($path, 0, 1) === '~') {
+                    $paths[$i] = $home . substr($path, 1);
+                }
+            }
+            return $is_array ? $paths : $paths[0];
+        }
+
+        /**
          * Get the user's home directory
          *
          * - Attempts to handle situation where user is running via sudo
@@ -6700,7 +6753,7 @@ if (! class_exists("Console_Abstract")) {
                 if (empty($sudo_user)) {
                     // Windows doesn't have 'HOME' set necessarily
                     if (empty($_SERVER['HOME'])) {
-                        $this->home_dir = $_SERVER['HOMEDRIVE'] . $_SERVER['HOMEDRIVE'];
+                        $this->home_dir = $_SERVER['HOMEDRIVE'] . $_SERVER['HOMEPATH'];
 
                     // Simplest and most typical - get home dir from env vars.
                     } else {
@@ -6817,6 +6870,13 @@ if (! class_exists("Console_Abstract")) {
 
                 $this->config_to_save['__WSC__']['c'][" "] = "\n    /**\n     * " . $this->version(false) . " configuration\n     */\n";
                 foreach ($this->config_to_save as $key => $value) {
+
+                    // While looping, update paths that we encounter
+                    $path_config_options = static::getMergedProperty('PATH_CONFIG_OPTIONS');
+                    if (in_array($key, $path_config_options)) {
+                        $this->config_to_save[$key] = $this->shortenPath($value);
+                    }
+
                     if ($key != '__WSC__') {
                         $value = '';
                         $help = $this->_help_var($key, 'option');
@@ -6970,8 +7030,10 @@ if (! class_exists("Console_Abstract")) {
 
             $public_properties = $this->getPublicProperties();
             if (in_array($key, $public_properties)) {
-                if (is_string($value)) {
-                    $value = preg_replace('/^\~/', $this->getHomeDir(), $value);
+
+                $path_config_options = static::getMergedProperty('PATH_CONFIG_OPTIONS');
+                if (in_array($key, $path_config_options)) {
+                    $value = $this->interpretPath($value);
                 }
 
                 $this->{$key} = $value;
@@ -9271,7 +9333,7 @@ class PSSH extends Console_Abstract
      *
      * @var string
      */
-    public const VERSION = "2.6.0";
+    public const VERSION = "2.7.0";
 
     /**
      * Tool shortname - used as name of configurationd directory.
@@ -9321,6 +9383,19 @@ class PSSH extends Console_Abstract
         'json_import_path',
         'ssh_config_path',
         'sync',
+    ];
+
+    /**
+     * Path config options
+     *
+     * - These will be treated as filepaths for processing
+     * - This enables paths that reference '~' as the user's home folder
+     */
+    protected static $PATH_CONFIG_OPTIONS = [
+        'cli_script',
+        'json_config_paths',
+        'json_import_path',
+        'ssh_config_path',
     ];
 
     /**
